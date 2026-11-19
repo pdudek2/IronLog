@@ -31,3 +31,11 @@ export function computeReadinessScore(entry: Pick<ReadinessEntry, 'sleep' | 'moo
   if (score >= 40) return { score, tone: 'mid', color: 'var(--danger)', label: 'Moderate' }
   return { score, tone: 'low', color: 'var(--puls-steel)', label: 'Rest' }
 }
+
+// Train's one-tap answers since the check-in survey left (2026-11-18): Coach reads them as a marked day, not as answers.
+export const ROUGH_DAY = { sleep: 2, mood: 2, soreness: 4 } as const
+export const NORMAL_DAY = { sleep: 3, mood: 3, soreness: 3 } as const
+export function oneTapDay(entry: Pick<ReadinessEntry, 'sleep' | 'mood' | 'soreness'>): 'rough' | 'normal' | null {
+  const same = (preset: { sleep: number; mood: number; soreness: number }) => entry.sleep === preset.sleep && entry.mood === preset.mood && entry.soreness === preset.soreness
+  return same(ROUGH_DAY) ? 'rough' : same(NORMAL_DAY) ? 'normal' : null
+}

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
 
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
@@ -17,11 +18,25 @@ export function ElapsedSessionTimer({ startedAt, className = '' }: { startedAt: 
   return <span className={className} data-testid="elapsed-session-timer">{formatElapsedTime(startedAt, now)}</span>
 }
 
+const restLeftMs = (rest: { startedAt: number; totalSec: number } | null, now: number) => (
+  rest ? Math.min(rest.totalSec * 1000, Math.max(0, rest.startedAt + rest.totalSec * 1000 - now)) : 0
+)
+
+// The running workout as one row: name, time and the rest left; the whole row returns, its top edge is the rest line.
 export default function ActiveWorkoutReturnBar() {
   const uid = useAuthStore((state) => state.user?.uid)
   const active = useWorkoutStore((state) => state.active)
+  const rest = useWorkoutStore((state) => state.restTimer)
   const location = useLocation()
   const navigate = useNavigate()
+  const [now, setNow] = useState(() => Date.now())
+  const id = useId()
+
+  useEffect(() => {
+    if (!rest) return
+    const interval = window.setInterval(() => setNow(Date.now()), 250)
+    return () => window.clearInterval(interval)
+  }, [rest])
 
   if (
     location.pathname.startsWith('/workout/new')
@@ -31,14 +46,20 @@ export default function ActiveWorkoutReturnBar() {
     || !active
   ) return null
 
+  const leftMs = restLeftMs(rest, now)
+  const left = Math.ceil(leftMs / 1000)
   return (
     <section className="active-workout-return-bar" role="region" aria-label="Active workout">
-      <p>
-        <span title={active.label ?? undefined}>{active.label?.trim() || 'Workout'}</span>
-        <ElapsedSessionTimer startedAt={active.startedAt} className="active-workout-return-time" />
-      </p>
-      <button type="button" onClick={() => navigate('/workout/new')} aria-label="Return to workout">
-        Return
+      {rest && leftMs > 0 && <i className="active-workout-return-rest" aria-hidden="true" style={{ width: `${(leftMs / (rest.totalSec * 1000)) * 100}%` }} />}
+      {/* Named from its own text when read, so the ticking clock needs no live region. */}
+      <button type="button" onClick={() => navigate('/workout/new')} aria-labelledby={`${id}-action ${id}-name ${id}-time`}>
+        <span id={`${id}-action`} className="sr-only">Return to workout,</span>
+        <span id={`${id}-name`} className="active-workout-return-name" title={active.label ?? undefined}>{active.label?.trim() || 'Workout'}</span>
+        <span id={`${id}-time`} className="active-workout-return-time">
+          <ElapsedSessionTimer startedAt={active.startedAt} />
+          {leftMs > 0 && ` · rest ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}
+        </span>
+        <span className="active-workout-return-action">Return<ChevronRight size={16} aria-hidden="true" /></span>
       </button>
     </section>
   )

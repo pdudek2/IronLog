@@ -18,11 +18,18 @@ export interface UseUserExercisesResult {
   ) => void
 }
 
+// The last list per account, so a screen opened again starts from it instead of inserting it after the read.
+const lastLoaded = new Map<string, Exercise[]>()
+const initialState = (uid: string | null): DataState<Exercise[]> => {
+  const cached = uid ? lastLoaded.get(uid) : undefined
+  return cached ? { status: 'success', data: cached } : { status: 'loading' }
+}
+
 export function useUserExercises(uid: string | null): UseUserExercisesResult {
-  const [resource, setResource] = useState<UserExercisesResource>({
+  const [resource, setResource] = useState<UserExercisesResource>(() => ({
     uid,
-    state: { status: 'loading' },
-  })
+    state: initialState(uid),
+  }))
   const mountedRef = useRef(false)
   const requestRef = useRef(0)
 
@@ -32,6 +39,7 @@ export function useUserExercises(uid: string | null): UseUserExercisesResult {
     getUserExercises(targetUid)
       .then((data) => {
         if (!mountedRef.current || requestId !== requestRef.current) return
+        lastLoaded.set(targetUid, data)
         setResource({ uid: targetUid, state: { status: 'success', data } })
       })
       .catch((error: unknown) => {
@@ -53,7 +61,7 @@ export function useUserExercises(uid: string | null): UseUserExercisesResult {
 
   const state: DataState<Exercise[]> = resource.uid === uid
     ? resource.state
-    : { status: 'loading' }
+    : initialState(uid)
   const exercises = state.status === 'success' ? state.data : []
 
   const retry = useCallback(() => {
@@ -66,14 +74,12 @@ export function useUserExercises(uid: string | null): UseUserExercisesResult {
     operationUid: string,
     updater: (current: Exercise[]) => Exercise[],
   ) => {
-    setResource((current) => (
-      current.uid === operationUid && current.state.status === 'success'
-        ? {
-            uid: current.uid,
-            state: { status: 'success', data: updater(current.state.data) },
-          }
-        : current
-    ))
+    setResource((current) => {
+      if (current.uid !== operationUid || current.state.status !== 'success') return current
+      const data = updater(current.state.data)
+      lastLoaded.set(operationUid, data)
+      return { uid: current.uid, state: { status: 'success', data } }
+    })
   }, [])
 
   return { state, exercises, retry, updateExercises }

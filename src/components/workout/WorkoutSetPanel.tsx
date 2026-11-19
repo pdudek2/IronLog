@@ -2,21 +2,22 @@ import type { ReactNode } from 'react'
 import type { WorkoutSet } from '../../store/workoutStore'
 import type { Units } from '../../lib/userProfile'
 import WeightInput from './WeightInput'
+import { selectOnRetap } from './sessionHelpers'
 import {
   displayWeightDeltaToKg,
   displayWeightStringToKg,
   kgStringToDisplayWeight,
 } from '../../lib/weightUnits'
 import { weightStep } from '../../shared/weightUnits'
-import { setPanelStatus } from '../../shared/workoutDisplay'
 import { acceptSetInput } from '../../shared/setInput'
 
 interface WorkoutSetPanelProps {
   exerciseIndex: number
   exerciseName: string
+  // Which exercise and set the numbers go to.
+  title: string
   set: WorkoutSet | null
   setIndex: number
-  setCount: number
   units: Units
   rest: ReactNode
   openSetIndex: number
@@ -41,9 +42,9 @@ function Stepper({ label, step, onStep }: { label: string; step: number; onStep:
 export default function WorkoutSetPanel({
   exerciseIndex,
   exerciseName,
+  title,
   set,
   setIndex,
-  setCount,
   units,
   rest,
   openSetIndex,
@@ -64,7 +65,7 @@ export default function WorkoutSetPanel({
     <section className="workout-set-panel" aria-label="Current set">
       {rest ?? (
         <div className="workout-set-panel-status" data-plain={(set && !set.done) || undefined}>
-          <strong>{setPanelStatus(set, setIndex, setCount)}</strong>
+          <strong>{title}</strong>
         </div>
       )}
 
@@ -99,6 +100,7 @@ export default function WorkoutSetPanel({
                   value={set.reps}
                   onChange={(event) => { if (acceptSetInput(event.target.value, set.reps, 'reps', units)) onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value) }}
                   onFocus={(event) => event.currentTarget.select()}
+                  {...selectOnRetap}
                   aria-label={`Reps, ${exerciseName}, set ${setNumber}`}
                 />
                 <small>reps</small>

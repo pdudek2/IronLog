@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Check } from 'lucide-react'
 import WorkoutSetPanel from './workout/WorkoutSetPanel'
 import type { WorkoutSet } from '../store/workoutStore'
-import { formatPreviousSet, setPairLabel, setPanelRestLabel } from '../shared/workoutDisplay'
+import { formatPreviousSet, setPairLabel, setPanelRestLabel, setPanelStatus } from '../shared/workoutDisplay'
 
 const REST_MS = 8000
 const LAST = [{ weight: 80, reps: 8 }, { weight: 80, reps: 8 }, { weight: 80, reps: 7 }]
@@ -134,8 +134,8 @@ export default function LandingDemo() {
       exerciseIndex={0}
       exerciseName="Bench Press"
       set={panelSet}
+      title={setPanelStatus(panelSet, current, sets.length)}
       setIndex={current}
-      setCount={sets.length}
       units="kg"
       rest={rest}
       openSetIndex={openSetIndex}

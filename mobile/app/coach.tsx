@@ -1,5 +1,5 @@
 import CoachPlanPanel from '../src/CoachPlanPanel'
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import BottomNavigation, { plateRow, usePlateHeight } from '../src/BottomNavigation'
 import { KeyboardLift } from '../src/KeyboardLift'
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -47,8 +47,7 @@ function ContextNotice({ context }: { context?: AiContextMetadata }) {
   return context?.status === 'limited' ? <Text style={s.context}>Response was created with some data unavailable: {context.unavailableSources.join(', ')}.</Text> : null
 }
 function Coach({ uid }: { uid: string }) {
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
+  const plateHeight = usePlateHeight()
   const [, redraw] = useState(0)
   const [controller] = useState(() => new CoachController(nativeCoachDependencies(uid), () => redraw(value => value + 1)))
   const state = controller.state
@@ -130,7 +129,7 @@ function Coach({ uid }: { uid: string }) {
       <View style={[s.grow, tab !== 'chat' && { display: 'none' }]}>
         {/* The offset keeps the key field above the composer too. */}
         <KeyboardAwareScrollView ref={outer} bottomOffset={80} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" scrollEventThrottle={16}
-          onScroll={event => { navigation.onScroll(event); const e = event.nativeEvent; nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }}
+          onScroll={event => { const e = event.nativeEvent; nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }}
           onContentSizeChange={() => { if (conversation && nearBottom.current) outer.current?.scrollToEnd({ animated: false }) }}>
           {top}
           {!conversation ? <View style={s.empty}>
@@ -155,7 +154,7 @@ function Coach({ uid }: { uid: string }) {
           {configured && keyPanel}
         </KeyboardAwareScrollView>
         {/* The composer stays above the tab bar and rides the keyboard over it. */}
-        <KeyboardLift rest={navigationInset}>{ready && <View style={s.composer}>
+        <KeyboardLift rest={0} gap={-plateHeight} style={ready && plateRow}>{ready && <View style={s.composer}>
           <View style={s.composerField}>
             <TextInput accessibilityLabel="Message to AI Coach" {...fieldColors} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
               placeholder="Ask about your training" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="center" />
@@ -167,9 +166,9 @@ function Coach({ uid }: { uid: string }) {
           {!!(configured ? 'Responses are billed to your OpenRouter API key.' : allowance) && <Text style={s.composerNote}>{configured ? 'Responses are billed to your OpenRouter API key.' : allowance}</Text>}
         </View>}</KeyboardLift>
       </View>
-      <View style={[s.grow, tab !== 'plan' && { display: 'none' }]}><CoachPlanPanel uid={uid} controller={controller} top={top} bottom={configured ? keyPanel : null} onScroll={navigation.onScroll} bottomInset={navigationInset} /></View>
+      <View style={[s.grow, tab !== 'plan' && { display: 'none' }]}><CoachPlanPanel uid={uid} controller={controller} top={top} bottom={configured ? keyPanel : null} bottomInset={plateHeight} /></View>
     </View>
-    <BottomNavigation {...navigation} />
+    <BottomNavigation />
     {more && <BottomSheet title="Coach" onClose={() => setMore(false)}>{close => <>
       {tab === 'chat' && conversation && <Pressable accessibilityRole="button" onPress={() => close(() => { controller.reset(); nearBottom.current = true })} style={({ pressed }) => [s.sheetRow, pressed && s.pressed]}><Text style={s.sheetRowText}>Reset conversation</Text></Pressable>}
       {!configured && !settings && <Pressable accessibilityRole="button" onPress={() => close(openSettings)} style={({ pressed }) => [s.sheetRow, pressed && s.pressed]}><Text style={s.sheetRowText}>Use your own OpenRouter key</Text></Pressable>}

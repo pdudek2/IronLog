@@ -56,8 +56,8 @@ test('navigation before debounce saves the last edit and resumes without a false
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '9')
     input.dispatchEvent(new Event('input', { bubbles: true }))
     // The mobile bar is inert here, so mobile leaves through Minimize and desktop through TopNav.
-    const leave = [...document.querySelectorAll<HTMLButtonElement>('nav:not([inert]) button, button[aria-label="Minimize workout"]')]
-      .find((element) => (element.getAttribute('aria-label') === 'Minimize workout' || element.textContent?.trim() === 'Progress')
+    const leave = [...document.querySelectorAll<HTMLButtonElement>('nav:not([inert]) button, button[aria-label="Back to Train"]')]
+      .find((element) => (element.getAttribute('aria-label') === 'Back to Train' || element.textContent?.trim() === 'Progress')
         && element.getBoundingClientRect().width > 0)!
     leave.click()
   }, repsLabel)

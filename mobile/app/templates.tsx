@@ -1,4 +1,4 @@
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import BottomNavigation from '../src/BottomNavigation'
 import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
@@ -41,8 +41,6 @@ function Plans({ uid }: { uid: string }) {
     const timer = setTimeout(() => router.setParams({ saved: undefined }), 4000)
     return () => clearTimeout(timer)
   }, [router, saved])
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
   const active = useActiveRuntime()
   const closure = useClosureRuntime()
   const launch = useLaunchRuntime()
@@ -117,7 +115,7 @@ function Plans({ uid }: { uid: string }) {
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { paddingBottom: 32 + navigationInset }]}>
+    <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 32 }]}>
       <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <Text style={styles.count}>{plans.length} {pluralize(plans.length, 'plan', 'plans')}</Text>}</View><View style={styles.headerActions}><Pressable accessibilityRole="button" onPress={() => setPasting(true)} style={empty ? styles.pastePrimary : styles.newPlan}><LineIcon name="paste" size={15} color={empty ? colors.onPrimary : colors.text} /><Text style={empty ? styles.pastePrimaryText : styles.newPlanText}>Paste a plan</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><LineIcon name="plus" size={15} color={colors.text} /><Text style={styles.newPlanText}>New plan</Text></Pressable></View></View>
       {saved === '1' && <Text accessibilityLiveRegion="polite" style={styles.savedNotice}>Plan saved</Text>}
       {feedback && !feedbackPlan && launchFeedback}
@@ -164,7 +162,7 @@ function Plans({ uid }: { uid: string }) {
     </Pressable></>}
   </BottomSheet>}
   {pasting && <PastePlanSheet uid={uid} onClose={() => setPasting(false)} />}
-  <BottomNavigation {...navigation} />
+  <BottomNavigation />
   </SafeAreaView>
 }
 

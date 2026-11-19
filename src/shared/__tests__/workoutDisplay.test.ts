@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { focusExerciseIndex, nextGroupMember, reconcileRest, restAfterSet, restoredRest, trainingSinceLabel, upNextQueue } from '../workoutDisplay'
+import { focusExerciseIndex, nextGroupMember, reconcileRest, restAfterSet, restoredRest, roundRows, sessionBlocks, trainingSinceLabel, upNextQueue } from '../workoutDisplay'
 import type { Role } from '../compression'
 
 it('dates training from the first workout when imported history is older than the account', () => {
@@ -72,6 +72,14 @@ describe('session flow', () => {
     expect(logged.rest).toBe(local)
     // Undo of that set after a Skip: the earlier set's rest stays skipped.
     expect(reconcileRest(null, logged.checked, snapshot(at - 300_000, at - 10_000), roles, false, at + 7_000).rest).toBeNull()
+  })
+
+  it('lists the session in plan order with each pair as one block, its sets in rounds', () => {
+    const list = [exercise(0, 4), exercise(0, 3), exercise(0, 2, 'g1'), exercise(0, 3, 'g1'), exercise(0, 1, 'g2')]
+    expect(sessionBlocks(list)).toEqual([{ kind: 'single', index: 0 }, { kind: 'single', index: 1 }, { kind: 'group', group: 'g1', indices: [2, 3] }, { kind: 'single', index: 4 }])
+    expect(roundRows(list, [2, 3]).map(({ member, setIndex }) => `${member}:${setIndex}`)).toEqual(['2:0', '3:0', '2:1', '3:1', '3:2'])
+    // A cut can leave another exercise between the members; the block keeps the pair together.
+    expect(sessionBlocks([exercise(0, 2), exercise(0, 2, 'g1'), exercise(0, 2), exercise(0, 2, 'g1')])).toEqual([{ kind: 'single', index: 0 }, { kind: 'group', group: 'g1', indices: [1, 3] }, { kind: 'single', index: 2 }])
   })
 
   it('rests by role, not after a set that leaves its round open, and by the group after a round', () => {

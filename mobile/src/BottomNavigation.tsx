@@ -1,33 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Pressable, StyleSheet, Text, View, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native'
+import { useCallback, useRef } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import ActiveWorkoutReturnBar, { useReturnBar } from './ActiveWorkoutReturnBar'
 import { useAuthRuntime } from './runtime'
-import { navigationBarHeight, navigationSection, scrollNavigation, tabNavigation, type NavigationTab } from './navigation'
+import { navigationSection, tabNavigation, type NavigationTab } from './navigation'
 import { colors } from './theme'
 
 export type NavigationExit = (proceed: () => void | Promise<boolean>) => void
-const initialScroll = { y: 0, start: 0, direction: 0, hidden: false }
-export function useBottomNavigation() {
-  const [hidden, setHidden] = useState(false)
-  const scroll = useRef(initialScroll)
-  const inset = useSafeAreaInsets().bottom
-  useFocusEffect(useCallback(() => { scroll.current = initialScroll; setHidden(false) }, []))
-  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
-    scroll.current = scrollNavigation(scroll.current, contentOffset.y, contentSize.height - layoutMeasurement.height, navigationBarHeight(inset))
-    setHidden(scroll.current.hidden)
-  }, [inset])
-  return { onScroll, hidden }
-}
-
-// The bar floats over the page, so a screen keeps this room below its content and its docks whether the bar shows or not.
-export function useNavigationInset() {
-  const inset = useSafeAreaInsets().bottom
-  return navigationBarHeight(inset) + (useReturnBar().visible ? RETURN_ROW_HEIGHT : 0)
-}
 
 const TABS: Record<NavigationTab, string> = {
   Train: 'M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z m-15.096 8.732 1.4-1.4 m16.2-16.2 1.4-1.4 M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z m4.257-7.085 4.8-4.8',
@@ -40,7 +21,16 @@ function Icon({ name, color }: { name: NavigationTab; color: string }) {
   return <Svg accessibilityElementsHidden width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><Path d={TABS[name]} /></Svg>
 }
 
-export default function BottomNavigation({ hidden, onRequestExit }: { hidden: boolean; onRequestExit?: NavigationExit }) {
+const TAB_ROW_HEIGHT = 60
+const RETURN_ROW_HEIGHT = 52
+
+// The plate's height under a screen's own action row, which sits right above it and rides the keyboard over it.
+export function usePlateHeight() {
+  return (useReturnBar().visible ? RETURN_ROW_HEIGHT : 0) + TAB_ROW_HEIGHT + useSafeAreaInsets().bottom
+}
+
+// One flat plate at the bottom edge, part of the screen's column: the running workout above the tabs.
+export default function BottomNavigation({ onRequestExit }: { onRequestExit?: NavigationExit }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user } = useAuthRuntime()
@@ -58,31 +48,22 @@ export default function BottomNavigation({ hidden, onRequestExit }: { hidden: bo
     else void guarded()
   }
   const { visible: returning } = useReturnBar()
-  const height = navigationBarHeight(inset) + (returning ? RETURN_ROW_HEIGHT : 0)
-  const [shift] = useState(() => new Animated.Value(0))
-  const [fade] = useState(() => new Animated.Value(1))
-  useEffect(() => {
-    // Same motion as the web bar: transform 220 ms, opacity 180 ms, CSS "ease".
-    const easing = Easing.bezier(0.25, 0.1, 0.25, 1)
-    Animated.parallel([
-      Animated.timing(shift, { toValue: hidden ? 1 : 0, duration: 220, easing, useNativeDriver: true }),
-      Animated.timing(fade, { toValue: hidden ? 0 : 1, duration: 180, easing, useNativeDriver: true }),
-    ]).start()
-  }, [fade, hidden, shift])
-  return <Animated.View style={[styles.overlay, { height, opacity: fade, transform: [{ translateY: shift.interpolate({ inputRange: [0, 1], outputRange: [0, height] }) }] }]} pointerEvents={hidden ? 'none' : 'box-none'}
-    accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>
-    {returning && <View style={[styles.returnRow, { bottom: Math.max(10, inset) + 66 }]}><ActiveWorkoutReturnBar onRequestExit={onRequestExit} /></View>}
-    <View style={[styles.bar, { bottom: Math.max(10, inset) }]}>
-      {(Object.keys(TABS) as NavigationTab[]).map(name => <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => { const { kind, href } = tabNavigation(pathname, name); router[kind](href as Href) })} style={[styles.tab, section === name && styles.selected]}><Icon name={name} color={section === name ? colors.textStrong : colors.muted} /><Text style={[styles.label, section === name && { color: colors.textStrong }]}>{name}</Text></Pressable>)}
+  return <View style={styles.plate}>
+    {returning && <ActiveWorkoutReturnBar onRequestExit={onRequestExit} />}
+    <View accessibilityRole="tablist" style={[styles.tabs, returning && styles.divided]}>
+      {(Object.keys(TABS) as NavigationTab[]).map(name => <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => { const { kind, href } = tabNavigation(pathname, name); router[kind](href as Href) })} style={({ pressed }) => [styles.tab, pressed && styles.pressed]}><Icon name={name} color={section === name ? colors.textStrong : colors.muted} /><Text style={[styles.label, section === name && styles.labelSelected]}>{name}</Text></Pressable>)}
     </View>
-  </Animated.View>
+    <View style={{ height: inset }} />
+  </View>
 }
-const RETURN_ROW_HEIGHT = 58
+// A screen's action row above the plate: same surface, divided by a hairline.
+export const plateRow = { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth } as const
 const styles = StyleSheet.create({
-  overlay: { bottom: 0, left: 0, position: 'absolute', right: 0 },
-  returnRow: { left: 14, position: 'absolute', right: 14 },
-  bar: { position: 'absolute', left: 14, right: 14, height: 58, flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4.8, borderRadius: 19.2, backgroundColor: colors.surfaceHigh, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 14px 30px -12px rgba(0, 0, 0, 0.8)' },
-  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 14, overflow: 'hidden' },
-  selected: { backgroundColor: colors.choiceSelected },
-  label: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 16, includeFontPadding: false, color: colors.muted },
+  plate: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
+  tabs: { height: TAB_ROW_HEIGHT, flexDirection: 'row', alignItems: 'stretch' },
+  divided: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  pressed: { opacity: 0.6 },
+  label: { fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 16, includeFontPadding: false, color: colors.muted },
+  labelSelected: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold' },
 })

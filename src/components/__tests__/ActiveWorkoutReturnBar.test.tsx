@@ -48,8 +48,16 @@ describe('ActiveWorkoutReturnBar', () => {
     expect(region).toHaveTextContent(activeSession.label!)
     expect(region).toHaveTextContent('05:05')
     expect(region).not.toHaveTextContent(/saved|cloud/i)
+    expect(region).not.toHaveTextContent('rest')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Return to workout' }))
+    expect(screen.getByRole('button')).toHaveAccessibleName(`Return to workout, ${activeSession.label} 05:05`)
+    act(() => useWorkoutStore.getState().startRestTimer(90))
+    expect(region).toHaveTextContent('rest 1:30')
+    expect(screen.getByRole('button')).toHaveAccessibleName(`Return to workout, ${activeSession.label} 05:05 · rest 1:30`)
+    act(() => { vi.advanceTimersByTime(91_000) })
+    expect(region).not.toHaveTextContent('rest')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Return to workout,/ }))
 
     expect(screen.getByText('Workout route')).toBeInTheDocument()
     expect(useWorkoutStore.getState().active).toMatchObject(activeSession)
@@ -65,7 +73,7 @@ describe('ActiveWorkoutReturnBar', () => {
     renderBar()
 
     expect(screen.getByRole('region', { name: 'Active workout' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Return to workout' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Return to workout,/ }))
 
     expect(screen.getByText('Workout route')).toBeInTheDocument()
     expect(useWorkoutStore.getState().active).toMatchObject(emptySession)

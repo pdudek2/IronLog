@@ -7,7 +7,7 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
-import BottomNavigation, { useBottomNavigation, useNavigationInset, type NavigationExit } from '../src/BottomNavigation'
+import BottomNavigation, { type NavigationExit } from '../src/BottomNavigation'
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
 import { deleteAccountOnServer, logout, readFirstWorkoutAt, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
 import { BottomSheet } from '../src/BottomSheet'
@@ -52,8 +52,6 @@ function Profile({ uid }: { uid: string }) {
     applyUnits: (owner, units) => runtime.current.refreshUnits(owner, units) }, setState))
   const [signingOut, setSigningOut] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
   const focused = useRef(false)
   const exiting = useRef(false)
   const confirming = useRef(false)
@@ -122,7 +120,7 @@ function Profile({ uid }: { uid: string }) {
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader onRequestAction={(action, proceed) => { if (action !== 'profile') leave(proceed) }} />
-    <KeyboardAwareScrollView ref={scroll} bottomOffset={16} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: 32 + navigationInset }]}>
+    <KeyboardAwareScrollView ref={scroll} bottomOffset={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: 32 }]}>
         <View style={styles.head}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{(input?.displayName || '?').charAt(0).toUpperCase()}</Text></View>
           <View style={styles.headCopy}>
@@ -149,7 +147,7 @@ function Profile({ uid }: { uid: string }) {
         <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => setDeleting(true)} style={styles.signOut}><Text style={styles.signOutText}>Delete account</Text></Pressable>
         <Text selectable style={styles.version}>{APP_VERSION}</Text>
     </KeyboardAwareScrollView>
-    <BottomNavigation {...navigation} onRequestExit={leave} />
+    <BottomNavigation onRequestExit={leave} />
     {deleting && <BottomSheet title="Delete account" onClose={() => setDeleting(false)}>
       {(close) => <DeleteAccount uid={uid} working={active.state.status === 'ready'} close={close} onDeleted={() => router.replace('/')} />}
     </BottomSheet>}

@@ -32,6 +32,7 @@ import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import WeightInput from '../components/workout/WeightInput'
+import { selectOnRetap } from '../components/workout/sessionHelpers'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { ActionFeedback } from '../components/ActionFeedback'
@@ -679,13 +680,13 @@ export default function WorkoutDetailPage() {
           </div>
         </header>
 
-        {readStatus !== 'ready' && !deleteOperation && (
+        {/* A refresh over data already on screen is announced, not inserted above it. */}
+        {readStatus === 'loading' && !deleteOperation && <p className="sr-only" role="status">Refreshing workout…</p>}
+        {readStatus === 'error' && !deleteOperation && (
           <ActionFeedback
-            status={readStatus === 'loading' ? 'pending' : 'error'}
-            message={readStatus === 'loading'
-              ? 'Refreshing workout…'
-              : 'Could not refresh workout. Showing the last available data.'}
-            onRetry={readStatus === 'error' ? retryWorkoutRead : undefined}
+            status="error"
+            message="Could not refresh workout. Showing the last available data."
+            onRetry={retryWorkoutRead}
             className="mb-4"
           />
         )}
@@ -898,6 +899,7 @@ export default function WorkoutDetailPage() {
                             onChange={(event) => { if (acceptSetInput(event.target.value, set.reps === 0 ? '' : String(set.reps), 'reps', units)) handleSetChange(exerciseIndex, setIndex, 'reps', event.target.value) }}
                             placeholder="0"
                             onFocus={(event) => event.currentTarget.select()}
+                            {...selectOnRetap}
                             aria-invalid={showEditErrors && set.reps <= 0 ? true : undefined}
                             aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
                           />

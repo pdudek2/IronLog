@@ -15,7 +15,7 @@ import { readExerciseDetail } from './nativeExercises'
 import { useActiveRuntime, useAuthRuntime } from './runtime'
 import { readStateForKey, startRead, type ReadResult, type ReadState } from './scopedRead'
 import type { ExerciseSource } from './session'
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from './BottomNavigation'
+import BottomNavigation from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ExerciseForm from './ExerciseForm'
 import { colors, pageBackground, pageTitle, fieldColors } from './theme'
@@ -31,11 +31,11 @@ function useFocusedRead<T>(key: string, load: () => Promise<ReadResult<T>>, enab
   return { state: readStateForKey(key, stored, remember), retry: () => setAttempt(value => value + 1) }
 }
 
-function Frame({ children, navigation }: { children: ReactNode; navigation: ReturnType<typeof useBottomNavigation> }) {
+function Frame({ children }: { children: ReactNode }) {
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" /><HistoryHeader />
     <View style={styles.body}>{children}</View>
-    <BottomNavigation {...navigation} />
+    <BottomNavigation />
   </SafeAreaView>
 }
 function Icon({ kind }: { kind: 'search' | 'edit' | 'right' | 'filters' }) {
@@ -49,8 +49,6 @@ export function ExerciseLibraryScreen() {
 type LibraryItem = { kind: 'section'; title: string; count: number | string; key: string } | { kind: 'status'; key: string } | { kind: 'exercise'; exercise: Exercise; source: ExerciseSource; key: string }
 function Library({ uid }: { uid: string }) {
   const router = useRouter()
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
   const load = useCallback(() => readExerciseMetadata(uid), [uid])
   const catalog = useFocusedRead(uid, load, true, `library:${uid}`)
   const [search, setSearch] = useState('')
@@ -79,8 +77,8 @@ function Library({ uid }: { uid: string }) {
     { kind: 'section', key: 'shared-head', title: 'Shared library', count: global.length },
     ...global.map(exercise => ({ kind: 'exercise' as const, key: `global:${exercise.id}`, exercise, source: 'global' as const })),
   ]
-  return <Frame navigation={navigation}>
-    <FlatList data={items} keyExtractor={item => item.key} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 96 + navigationInset }]}
+  return <Frame>
+    <FlatList data={items} keyExtractor={item => item.key} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 96 }]}
       ListHeaderComponent={<View style={styles.libraryHeader}><View><BackLink label="Plans" onPress={() => router.navigate('/templates')} /><Text accessibilityRole="header" style={styles.title}>Exercises</Text></View><View style={styles.commands}>
         <View style={styles.search}><View style={styles.searchRow}><Icon kind="search" /><TextInput accessibilityLabel="Search exercises" {...fieldColors} placeholder="Search exercises..." placeholderTextColor={colors.mutedSoft} value={search} onChangeText={setSearch} style={styles.searchInput} /></View>{activeFilters && <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" hitSlop={6} onPress={clear} style={styles.clear}><Text style={styles.action}>Clear</Text></Pressable>}</View>
         <View style={styles.commandRow}><Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.filterToggle}><Icon kind="filters" /><Text style={styles.commandText}>Filters</Text>{filterCount > 0 && <Text style={styles.filterCount}>{filterCount}</Text>}<View style={styles.chevron}><LineIcon name={expanded ? 'chevron-up' : 'chevron-down'} /></View></Pressable><Pressable accessibilityRole="button" accessibilityState={{ disabled: catalog.state.status !== 'ready' || catalog.state.fromCache }} disabled={catalog.state.status !== 'ready' || catalog.state.fromCache} onPress={() => setForm({ exercise: null })} style={[styles.add, catalog.state.status !== 'ready' && { opacity: 0.5 }]}><LineIcon name="plus" size={14} color={colors.textStrong} /><Text style={styles.commandText}>Add custom</Text></Pressable></View>
@@ -113,8 +111,6 @@ export function ExerciseDetailScreen({ source, id }: { source: string; id: strin
 }
 function Detail({ uid, source, id }: { uid: string; source: string; id: string }) {
   const router = useRouter()
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
   const valid = (source === 'global' || source === 'user') && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(id)
   const global = source === 'global' ? exercises.find(exercise => exercise.id === id) : null
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
@@ -144,7 +140,7 @@ function Detail({ uid, source, id }: { uid: string; source: string; id: string }
     record ? `best ${kgToDisplayWeight(record.maxWeight, units)} ${units} × ${record.maxReps}` : null,
     record ? `est. max ${kgToDisplayWeight(estimatedOneRepMax(record.maxWeight, record.maxReps), units)} ${units}` : null,
   ].filter(Boolean).join(' · ')
-  return <Frame navigation={navigation}><ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.detailContent, { paddingBottom: 40 + navigationInset }]}>
+  return <Frame><ScrollView contentContainerStyle={[styles.detailContent, { paddingBottom: 40 }]}>
     {absent ? <View style={styles.notFound}><Text style={styles.copy}>Exercise library</Text><Text accessibilityRole="header" style={styles.notFoundTitle}>Exercise not found</Text><Text style={styles.copy}>This link is outdated or the exercise has been deleted.</Text><Pressable accessibilityRole="button" onPress={() => router.dismissTo('/exercises')} style={styles.retry}><Text style={styles.commandText}>Back to library</Text></Pressable></View>
       : loading ? <View style={styles.empty}><Text style={styles.copy}>Loading exercise...</Text></View>
         : history.state.status === 'error' ? <Feedback title="Could not load exercise" copy="History data did not load. Check your connection and try again." retry={history.retry} />

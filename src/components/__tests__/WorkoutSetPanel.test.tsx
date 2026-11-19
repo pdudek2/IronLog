@@ -15,8 +15,8 @@ const handlers = () => ({
 const base = {
   exerciseIndex: 1,
   exerciseName: 'Bench Press',
+  title: 'Bench Press · set 3 of 4',
   setIndex: 2,
-  setCount: 4,
   units: 'kg' as const,
   rest: null,
   openSetIndex: 2,
@@ -65,9 +65,9 @@ describe('WorkoutSetPanel', () => {
 
   it('edits a done set without logging it and returns to the open set', () => {
     const on = handlers()
-    const { rerender } = render(<WorkoutSetPanel {...base} {...on} setIndex={0} set={{ weight: '80', reps: '6', done: true }} />)
+    const { rerender } = render(<WorkoutSetPanel {...base} {...on} title="Bench Press · editing set 1" setIndex={0} set={{ weight: '80', reps: '6', done: true }} />)
 
-    expect(screen.getByText('Editing set 1')).toBeInTheDocument()
+    expect(screen.getByText('Bench Press · editing set 1')).toBeInTheDocument()
     expect(setPanelRestLabel({ done: true }, 0)).toBe('Editing set 1')
     expect(setPanelRestLabel({ done: false }, 1)).toBe('Set 2 rest')
     expect(setPanelRestLabel(null, -1)).toBe('Rest')
@@ -86,7 +86,7 @@ describe('WorkoutSetPanel', () => {
     const on = handlers()
     render(<WorkoutSetPanel {...base} {...on} set={{ weight: '80', reps: '6', done: false }} />)
 
-    expect(screen.getByText('Set 3 of 4')).toBeInTheDocument()
+    expect(screen.getByText('Bench Press · set 3 of 4')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Log set 3 for Bench Press' }))
     expect(on.onToggleSet).toHaveBeenCalledWith(1, 2)
 

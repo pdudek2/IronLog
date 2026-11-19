@@ -258,4 +258,15 @@ describe('buildAiUserContext', () => {
 
     expect(context.monthlyInsights.signals.join('\n')).not.toContain('consecutive days')
   })
+
+  it('reads the one-tap rough and normal days as marked days, not as sleep and soreness answers', () => {
+    const rough = buildAiUserContext({ now: NOW, workoutReadLimit: 31, profile: {}, readinessEntries: [readiness(0, 2, 2, 4), readiness(1, 2, 2, 4)], workouts: [], records: [] })
+    const sections = buildChatContextSections(rough)
+    expect(sections.readinessLine).toContain('marked a rough day with one tap')
+    expect(sections.readinessLine).not.toContain('/100')
+    expect(sections.monthlyLine).toContain('marked 2 consecutive days as rough days')
+    expect(sections.monthlyLine).not.toContain('sleep, mood and soreness')
+    const answered = buildChatContextSections(buildAiUserContext({ now: NOW, workoutReadLimit: 31, profile: {}, readinessEntries: [readiness(0, 2, 2, 5)], workouts: [], records: [] }))
+    expect(answered.readinessLine).toContain('/100')
+  })
 })

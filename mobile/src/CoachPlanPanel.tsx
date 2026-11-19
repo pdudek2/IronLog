@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { COACH_PLAN_COST } from '../../src/shared/coachQuota'
-import { AppState, Pressable, StyleSheet, Text, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
+import { AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
+import { plateRow } from './BottomNavigation'
 import { KeyboardLift } from './KeyboardLift'
 import { useRouter } from 'expo-router'
 import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
@@ -15,7 +16,7 @@ import { colors, primaryGradient, fieldColors } from './theme'
 const equipment = [['barbell', 'Barbell'], ['dumbbell', 'Dumbbells'], ['cable', 'Cable'], ['machine', 'Machines'], ['bodyweight', 'Bodyweight'], ['kettlebell', 'Kettlebell']]
 const levels = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']]
 // `top` is the screen's header and key area, `bottom` the saved-key row: the panel owns the scroll so Generate can dock below it.
-export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll, bottomInset }: { uid: string; controller: CoachController; top?: React.ReactNode; bottom?: React.ReactNode; onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; bottomInset: number }) {
+export default function CoachPlanPanel({ uid, controller, top, bottom, bottomInset }: { uid: string; controller: CoachController; top?: React.ReactNode; bottom?: React.ReactNode; bottomInset: number }) {
   const router = useRouter()
   const [brief, setBrief] = useState(defaultPlanBrief)
   const [day, setDay] = useState(0)
@@ -67,7 +68,7 @@ export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll,
   const disabled = busy || generating || !!imported
   const selected = plan?.days[Math.min(day, plan.days.length - 1)]
   // The offset keeps the focused field above the Generate plan dock.
-  return <View style={s.screen}><KeyboardAwareScrollView bottomOffset={80} style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" onScroll={onScroll} scrollEventThrottle={16}>
+  return <View style={s.screen}><KeyboardAwareScrollView bottomOffset={80} style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
     {top}
     <View style={s.section}>
       <Text accessibilityRole="header" style={s.heading}>Workout brief</Text>
@@ -96,7 +97,7 @@ export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll,
     </View>}
     {bottom}
   </KeyboardAwareScrollView>
-    <KeyboardLift rest={bottomInset}><View style={s.dock}><Text style={[s.muted, s.dockNote]}>{controller.canSend && !controller.canPlan
+    <KeyboardLift rest={0} gap={-bottomInset} style={plateRow}><View style={s.dock}><Text style={[s.muted, s.dockNote]}>{controller.canSend && !controller.canPlan
         ? `A plan uses ${COACH_PLAN_COST} of today's ${controller.state.quota?.limit ?? ''} Coach messages; ${controller.remaining} left.`
         : 'Coach adds your profile, history and exercise library to the brief.'}</Text><Action primary disabled={!controller.canPlan || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View></KeyboardLift>
   </View>

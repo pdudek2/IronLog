@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 
-import { workoutTitle } from '../workoutCopy'
+import { weekCountLabel, workoutTitle } from '../workoutCopy'
 
 it.each([
   [' Push ', ['Bench Press'], 'Push'],
@@ -13,4 +13,8 @@ it.each([
     label,
     exercises: names.map((name) => ({ name, sets: [] })),
   })).toBe(expected)
+})
+
+it('counts the week against the goal until the goal is passed', () => {
+  expect([2, 3, 4].map((done) => weekCountLabel(done, 3))).toEqual(['2 of 3', '3 of 3', '4'])
 })

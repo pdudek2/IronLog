@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'expo-router'
 
 import { formatElapsed } from './session'
 import { useActiveRuntime, useOptionalClosureRuntime } from './runtime'
+import { Icon } from './icons'
+import { useRest } from './restClock'
 import { colors } from './theme'
 
 function useElapsed(startedAt: number | undefined) {
@@ -47,31 +49,36 @@ export function ResumeButton() {
   </Pressable>
 }
 
-export default function ActiveWorkoutReturnBar({ onRequestExit, top = false }: { onRequestExit?: NavigationExit; top?: boolean } = {}) {
+// The running workout as one row: name, time and the rest left, the whole row returns. Its top edge is the rest line.
+export default function ActiveWorkoutReturnBar({ onRequestExit, top = false, divided = false }: { onRequestExit?: NavigationExit; top?: boolean; divided?: boolean } = {}) {
   const { session, visible } = useReturnBar()
   const router = useRouter()
   const elapsed = useElapsed(session?.startedAt)
+  const rest = useRest()
+  const now = Date.now()
+  const restLeft = rest && session && rest.sessionId === session.sessionId ? Math.max(0, rest.startedAt + rest.totalSec * 1000 - now) : 0
   if (!visible) return null
   const back = () => router.dismissTo('/')
-  return <View accessibilityLabel="Active workout" style={[styles.bar, top && styles.barTop]}>
-    <Text numberOfLines={1} style={styles.title}>{session ? session.label?.trim() || 'Workout' : 'Workout needs attention'} {session && <Text style={styles.elapsed}>{elapsed}</Text>}</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => onRequestExit ? onRequestExit(back) : back()}
-      style={({ pressed }) => [styles.returnButton, pressed && styles.pressed]}>
-      <Text style={styles.returnText}>Return</Text>
-    </Pressable>
-  </View>
+  const seconds = Math.ceil(restLeft / 1000)
+  const label = session ? session.label?.trim() || 'Workout' : 'Workout needs attention'
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Return to workout, ${label}${session ? `, ${elapsed}` : ''}${restLeft ? `, rest ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : ''}`}
+    onPress={() => onRequestExit ? onRequestExit(back) : back()}
+    style={({ pressed }) => [styles.row, (divided || top) && styles.divided, top && styles.rowTop, pressed && styles.pressed]}>
+    {restLeft > 0 && rest && <View style={[styles.restLine, { width: `${(restLeft / (rest.totalSec * 1000)) * 100}%` }]} />}
+    <Text numberOfLines={1} style={styles.title}>{label}{session && <Text style={styles.meta}>  {elapsed}{restLeft > 0 ? ` · rest ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : ''}</Text>}</Text>
+    <Text style={styles.returnText}>Return</Text>
+    <Icon name="chevron-right" size={16} color={colors.text} />
+  </Pressable>
 }
 
 const styles = StyleSheet.create({
-  bar: {
-    alignItems: 'center', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07)', experimental_backgroundImage: 'linear-gradient(180deg, ' + colors.surfaceRaised + ', ' + colors.surface + ')',
-    flexDirection: 'row', gap: 12, height: 50, justifyContent: 'space-between', paddingLeft: 16, paddingRight: 6,
-  },
-  barTop: { marginHorizontal: 14, marginTop: 8 },
-  title: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14.5 },
-  elapsed: { color: colors.muted, fontVariant: ['tabular-nums'] },
-  returnButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, height: 38, justifyContent: 'center', paddingHorizontal: 14 },
-  returnText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  row: { alignItems: 'center', flexDirection: 'row', gap: 6, height: 52, paddingHorizontal: 16 },
+  rowTop: { backgroundColor: colors.surface },
+  divided: { borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
+  restLine: { backgroundColor: colors.seam, height: 2, left: 0, position: 'absolute', top: -1 },
+  title: { color: colors.textStrong, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14.5 },
+  meta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontVariant: ['tabular-nums'] },
+  returnText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14.5 },
   pressed: { opacity: 0.7 },
   resume: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 15, height: 52, justifyContent: 'center', paddingHorizontal: 16 },
   resumeText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, fontVariant: ['tabular-nums'] },

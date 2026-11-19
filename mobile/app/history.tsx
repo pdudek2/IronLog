@@ -1,5 +1,5 @@
 import WorkoutDraftRecovery from '../src/WorkoutDraftRecovery'
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import BottomNavigation from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -42,8 +42,6 @@ export default function HistoryScreen() {
   const { user } = useAuthRuntime()
   const active = useActiveRuntime()
   const router = useRouter()
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
   const uid = user?.uid ?? null
   const historyLoader = useCallback(() => uid ? readWorkoutHistory(uid) : Promise.resolve({ data: { workouts: [], truncated: false }, fromCache: false }), [uid])
   const metadataLoader = useCallback(() => uid ? readExerciseMetadata(uid) : Promise.resolve({ data: [], fromCache: false }), [uid])
@@ -94,7 +92,7 @@ export default function HistoryScreen() {
     <SafeAreaView edges={['top']} style={styles.screen}>
       <StatusBar style="light" />
       <HistoryHeader />
-      <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { paddingBottom: 32 + navigationInset }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 32 }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <WorkoutDraftRecovery uid={user.uid} />
         <View style={styles.header}>
           <Text accessibilityRole="header" style={styles.title}>History</Text>
@@ -215,7 +213,7 @@ export default function HistoryScreen() {
       </ScrollView>
     {calendarOpen && <CalendarSheet workouts={workouts} onClose={() => setCalendarOpen(false)}
       onOpenWorkout={(workoutId) => router.push({ pathname: '/workout/[workoutId]', params: { workoutId } })} />}
-    <BottomNavigation {...navigation} />
+    <BottomNavigation />
   </SafeAreaView>
   )
 }

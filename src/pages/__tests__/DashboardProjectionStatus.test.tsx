@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   preloadRouteByPath: vi.fn(),
   requestTemplateLaunch: vi.fn(),
+  launchOperation: null as null | object,
   targetUnavailable: null as null | ((target: {
     template: { id: string }
     dayIndex: number
@@ -71,7 +72,7 @@ vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
     mocks.targetUnavailable = onTargetUnavailable ?? null
     return ({
       pendingLaunch: null,
-      launchOperation: null,
+      launchOperation: mocks.launchOperation,
       launchingTemplateId: null,
       requestTemplateLaunch: mocks.requestTemplateLaunch,
       confirmTemplateLaunch: vi.fn(),
@@ -192,6 +193,7 @@ describe('Dashboard workout projection status', () => {
     mocks.preloadRouteByPath.mockReset()
     mocks.preloadRouteByPath.mockResolvedValue(undefined)
     mocks.requestTemplateLaunch.mockReset()
+    mocks.launchOperation = null
     mocks.targetUnavailable = null
     mocks.reportedReadinessEntry = null
     mocks.readinessEntry = null
@@ -944,7 +946,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const dock = await screen.findByRole('region', { name: 'Today' })
+    const dock = await screen.findByRole('region', { name: 'Start' })
     const starts = screen.getAllByRole('button', { name: /^Start / })
     expect(starts).toHaveLength(1)
     fireEvent.click(within(dock).getByRole('button', { name: 'Start Upper A' }))
@@ -955,6 +957,52 @@ describe('Dashboard workout projection status', () => {
       'dashboard:template-1:selection:0',
       { items: expect.any(Array) },
     )
+  })
+
+  it('ends Full sets after a break when the day turns rough, and does not offer it while rough', async () => {
+    const template = {
+      id: 'template-1', userId: 'user-1', name: 'Upper', createdAt: 1, updatedAt: 2,
+      days: [{ name: 'Upper A', exercises: [
+        { exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 4, targetReps: 8, targetWeight: 70 },
+        { exerciseId: 'row', exerciseSource: 'global' as const, name: 'Barbell Row', sets: 3, targetReps: 8, targetWeight: 65 },
+      ] }],
+    }
+    const now = Date.now()
+    mocks.getRecentWorkouts.mockResolvedValue([{ ...pendingWorkout, startedAt: now - 20 * 86_400_000, finishedAt: now - 20 * 86_400_000 + 3_600_000, materialized: true }])
+    mocks.getTemplates.mockResolvedValue([template])
+    const day = { userId: 'user-1', date: '2026-08-10', createdAt: 1 }
+    mocks.readinessEntry = { ...day, sleep: 3, mood: 3, soreness: 3 }
+
+    const view = render(<DashboardPage />)
+    fireEvent.click(await screen.findByRole('switch', { name: 'Full sets' }))
+    expect(await screen.findByText(/7 of 7 sets/)).toBeInTheDocument()
+
+    mocks.readinessEntry = { ...day, sleep: 2, mood: 2, soreness: 4 }
+    view.rerender(<DashboardPage />)
+    expect(await screen.findByText(/of 7 sets · rough day/)).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Full sets' })).not.toBeInTheDocument()
+
+    mocks.readinessEntry = { ...day, sleep: 3, mood: 3, soreness: 3 }
+    view.rerender(<DashboardPage />)
+    expect(await screen.findByRole('switch', { name: 'Full sets' })).not.toBeChecked()
+  })
+
+  it('keeps Train as it was while a started plan hands over to the session page', async () => {
+    const template = {
+      id: 'template-1', userId: 'user-1', name: 'Upper / Lower', createdAt: 1, updatedAt: 2,
+      days: [{ name: 'Upper A', exercises: [{ exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 4, targetReps: 8, targetWeight: 70 }] }],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValue([template])
+    mocks.launchOperation = { target: { template, dayIndex: 0, requestKey: 'dashboard:template-1:selection:0' }, replaceExisting: false, status: 'pending', errorMessage: null }
+
+    render(<DashboardPage />)
+    await screen.findByRole('button', { name: 'Starting…' })
+    act(() => useWorkoutStore.getState().hydrateFromDoc({ sessionId: 'started', startedAt: Date.now(), exercises: [] }))
+
+    expect(screen.getByRole('button', { name: 'Starting…' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Return to workout' })).not.toBeInTheDocument()
+    expect(screen.getByText('Bench Press')).toBeInTheDocument()
   })
 
   it('ignores a template failure that arrives after unmount, including its side effects', async () => {

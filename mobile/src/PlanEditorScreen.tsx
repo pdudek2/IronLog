@@ -1,5 +1,5 @@
 import { shouldSaveImportedDraft } from './coachPlan'
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from './BottomNavigation'
+import BottomNavigation, { plateRow, usePlateHeight } from './BottomNavigation'
 import { KeyboardLift } from './KeyboardLift'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -37,8 +37,7 @@ export default function PlanEditorScreen({ targetId, saveImport, returnTo }: { t
 function Editor({ uid, targetId, saveImport, returnTo }: { uid: string; targetId: string | null; saveImport?: string; returnTo?: 'dashboard' }) {
   const active = useActiveRuntime()
   const router = useRouter()
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
+  const plateHeight = usePlateHeight()
   const [draft, setDraft] = useState<PlanDraft | null>(null)
   const ownerId = useRef(newId())
   const draftRef = useRef<PlanDraft | null>(null)
@@ -254,7 +253,7 @@ function Editor({ uid, targetId, saveImport, returnTo }: { uid: string; targetId
     <HistoryHeader onRequestAction={(_, proceed) => leave(proceed)} />
     <View style={styles.screen}>
       {/* The offset keeps the focused field above the save dock. */}
-      <KeyboardAwareScrollView bottomOffset={showDock ? 76 : 16} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollView bottomOffset={showDock ? 76 : 16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => exit(false))} style={[styles.headerLink, styles.headerLinkRow]}><Icon name="chevron-left" /><Text style={styles.muted}>{returnTo ? 'Train' : 'Plans'}</Text></Pressable><View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text><Text style={styles.summary}>{draft.days.length} {pluralize(draft.days.length, 'day', 'days')} · {totalExercises} {pluralize(totalExercises, 'exercise', 'exercises')} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text></View></View>
         <Text style={styles.label}>Name</Text>
         <TextInput accessibilityLabel="Plan name" {...fieldColors} editable={!locked} maxLength={120} value={draft.name} onFocus={() => { inputFocused.current = true }} onBlur={() => { inputFocused.current = false }} onChangeText={(value) => change((current) => ({ ...current, name: value }))} placeholder="E.g. Upper / Lower 4 days" placeholderTextColor={colors.muted} style={styles.nameInput} />
@@ -266,9 +265,9 @@ function Editor({ uid, targetId, saveImport, returnTo }: { uid: string; targetId
         </View>
         {(draft.dirty || draft.resolvedId) && <Pressable accessibilityRole="button" disabled={locked} onPress={() => void discard()} style={styles.discard}><Text style={styles.muted}>Discard draft</Text></Pressable>}
       </KeyboardAwareScrollView>
-      <KeyboardLift rest={navigationInset}>{showDock && <View style={styles.dock}><View style={styles.dockCopy}>{(draft.pending || draft.dirty || !durable) && <Text style={styles.dockTitle}>{draft.pending ? busy ? 'Saving plan…' : 'Save outcome unresolved' : !durable ? 'Saving draft…' : openRows > 0 ? `Choose ${openRows} ${pluralize(openRows, 'exercise', 'exercises')} to save` : 'Unsaved changes'}</Text>}{error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}</View><View style={styles.dockActions}>{reloadReady && !draft.pending && <Pressable accessibilityRole="button" onPress={reload} style={styles.secondary}><Text style={styles.accent}>Reload</Text></Pressable>}{storageError && <Pressable accessibilityRole="button" onPress={() => { void persist(draftRef.current!) }} style={styles.secondary}><Text style={styles.accent}>Retry draft</Text></Pressable>}<Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} disabled={!canSubmit} onPress={() => void save()} style={[styles.save, !canSubmit && styles.disabled]}><PlanIcon kind="pencil" color={colors.textStrong} /><Text style={styles.saveText}>{busy ? 'Saving…' : draft.pending ? 'Retry save' : 'Save plan'}</Text></Pressable></View></View>}</KeyboardLift>
+      <KeyboardLift rest={0} gap={-plateHeight} style={showDock && plateRow}>{showDock && <View style={styles.dock}><View style={styles.dockCopy}>{(draft.pending || draft.dirty || !durable) && <Text style={styles.dockTitle}>{draft.pending ? busy ? 'Saving plan…' : 'Save outcome unresolved' : !durable ? 'Saving draft…' : openRows > 0 ? `Choose ${openRows} ${pluralize(openRows, 'exercise', 'exercises')} to save` : 'Unsaved changes'}</Text>}{error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}</View><View style={styles.dockActions}>{reloadReady && !draft.pending && <Pressable accessibilityRole="button" onPress={reload} style={styles.secondary}><Text style={styles.accent}>Reload</Text></Pressable>}{storageError && <Pressable accessibilityRole="button" onPress={() => { void persist(draftRef.current!) }} style={styles.secondary}><Text style={styles.accent}>Retry draft</Text></Pressable>}<Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} disabled={!canSubmit} onPress={() => void save()} style={[styles.save, !canSubmit && styles.disabled]}><PlanIcon kind="pencil" color={colors.textStrong} /><Text style={styles.saveText}>{busy ? 'Saving…' : draft.pending ? 'Retry save' : 'Save plan'}</Text></Pressable></View></View>}</KeyboardLift>
     </View>
-    <BottomNavigation {...navigation} onRequestExit={leave} />
+    <BottomNavigation onRequestExit={leave} />
     {resolving?.mode === 'choose' && resolvingRow && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} title={`Choose for “${resolvingRow.name}”`} suggestions={resolvingRow.unmatched?.suggestions} onClose={() => setResolving(null)} onSelect={(exerciseId, name, source) => { resolveRow(resolvingRow.rowId, exerciseId, name, source) }} />}
     {resolving?.mode === 'create' && resolvingRow && <ExerciseForm uid={uid} exercise={null} initialName={resolvingRow.name} onClose={() => setResolving(null)} onSaved={(created) => { catalog.retry(); if (created) resolveRow(resolvingRow.rowId, created.id, created.name, 'user'); else setResolving(null) }} />}
     {picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)} onSelect={(exerciseId, name, source) => { if (day.exercises.some((exercise) => exercise.exerciseId === exerciseId && exercise.exerciseSource === source)) { setMessage('Exercise is already in this day.'); return }; changeDay((item) => ({ ...item, exercises: [...item.exercises, { rowId: newId(), exerciseId, exerciseSource: source, name, sets: '4', targetReps: '8', weight: '0' }] })); setPicking(false) }} />}

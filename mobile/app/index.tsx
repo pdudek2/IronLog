@@ -641,7 +641,20 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
   return <View style={styles.exerciseStack}>
     {hasCustom && catalog.state.status === 'error' && <Pressable onPress={catalog.retry} accessibilityRole="button" style={styles.lookupAction}><Text style={styles.lookupText}>Exercise details unavailable · Retry</Text></Pressable>}
     {sessionBlocks(session.exercises).map((block) => {
-      if (block.kind === 'group') return <View key={block.group} onLayout={block.indices.includes(currentIndex) ? onCurrentLayout : undefined}>
+      if (block.kind === 'group' && !block.indices.includes(currentIndex)) {
+        const members = block.indices.map((index) => session.exercises[index]!)
+        const rounds = Math.max(...members.map((member) => member.sets.length))
+        const doneRounds = Math.min(...members.map((member) => member.sets.filter((set) => set.done).length))
+        const next = block.indices.find((index) => session.exercises[index]!.sets.some((set) => !set.done)) ?? block.indices[0]!
+        const kind = members.length === 2 ? 'Superset' : 'Circuit'
+        return <Pressable key={block.group} accessibilityRole="button" accessibilityLabel={`${kind}: ${members.map((member) => member.name).join(' and ')}. Open`} onPress={() => onGoTo(exerciseIdentity(session.exercises[next]!, next))}
+          style={({ pressed }) => [styles.listRow, pressed && styles.headingPressed]}>
+          <Text numberOfLines={1} style={styles.listName}><Text style={styles.listMeta}>{kind} · </Text>{members.map((member) => member.name).join(' + ')}</Text>
+          <Text style={styles.listMeta}>{doneRounds ? `${doneRounds} of ${rounds}` : rounds} {pluralize(rounds, 'round', 'rounds')}</Text>
+          <Icon name="chevron-down" size={16} />
+        </Pressable>
+      }
+      if (block.kind === 'group') return <View key={block.group} onLayout={onCurrentLayout}>
         <GroupBlock uid={uid} session={session} indices={block.indices} currentIndex={currentIndex} panelSet={panelSet} units={units} editing={editing}
           drawnSetId={drawnSetId} onSelect={onSelectMemberSet} onRemove={onRemoveExercise} sessionKey={sessionKey} /></View>
       const exercise = session.exercises[block.index]!
@@ -1116,7 +1129,6 @@ function SessionScreen({ user }: { user: AuthUser }) {
         {state.status === 'ready' && !sessionClosed && !resumePrompt && (<>
         {replacementLocked && <View accessibilityRole="alert" style={styles.syncNotice}><Text style={styles.syncCopy}>{launch?.state.message ?? 'Replacing workout…'}</Text>{launch?.state.status !== 'starting' && <Pressable accessibilityRole="button" onPress={() => void launch?.retry()} style={styles.syncAction}><Text style={styles.syncActionText}>Check replacement</Text></Pressable>}</View>}
         <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
-          <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' && !state.stale ? 'Saved on device' : ''}</Text>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
             <Delayed ms={1500}><View style={styles.staleNotice}>
               <Text style={styles.staleTitle}>Saved on this device</Text>
@@ -1142,6 +1154,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
             <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.progressTrack}><View style={[styles.progressFill, { width: `${sessionSetCount.total ? sessionSetCount.done / sessionSetCount.total * 100 : 0}%` }]} /></View>
             <TimeLine session={state.session} now={Date.now()} onOpen={() => setCutOpen(true)} />
           </View>}
+          <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' && !state.stale ? 'Saved on device' : ''}</Text>
           <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} sessionKey={sessionKey} history={history} currentIndex={panelIndex} panelSet={currentSetIndex}
             onGoTo={goToExercise} onSelectSet={selectSet} onSelectMemberSet={selectMemberSet} onCurrentLayout={scrollToCurrent} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} />
         </View>
@@ -1311,7 +1324,7 @@ const styles = StyleSheet.create({
     paddingBottom: 128,
   },
   sessionShell: { flex: 1, backgroundColor: colors.background },
-  lifecycleBar: { backgroundColor: '#0f0d0c', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
+  lifecycleBar: { backgroundColor: '#0f0d0c', height: 69, zIndex: 4 },
   lifecycleBarInner: { alignItems: 'center', flexDirection: 'row', height: 69, paddingHorizontal: 16 },
   logoutError: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 19, paddingHorizontal: 16, paddingVertical: 10 },
   centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 420, paddingHorizontal: 20, gap: 12 },

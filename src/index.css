@@ -9986,12 +9986,13 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 .train-dock .workout-set-panel-action,
-.workout-set-panel .workout-set-panel-action {
+.workout-focus-shell:not(.landing-demo) .workout-set-panel .workout-set-panel-action {
+  border-radius: 0.625rem;
   box-shadow: none;
 }
 
 .train-dock .workout-set-panel-action:not([data-quiet]),
-.workout-set-panel .workout-set-panel-action:not([data-quiet]) {
+.workout-focus-shell:not(.landing-demo) .workout-set-panel .workout-set-panel-action:not([data-quiet]) {
   background: var(--puls-bone);
 }
 
@@ -10219,24 +10220,24 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 /* Set rows are 44 px with no lines between them; the current row carries the highlight. */
-.workout-set-list .workout-set-row + .workout-set-row {
+.workout-focus-shell:not(.landing-demo) .workout-set-list .workout-set-row + .workout-set-row {
   border-top: 0;
 }
 
-.workout-focus-shell .workout-add-set {
+.workout-focus-shell:not(.landing-demo) .workout-add-set {
   border-top: 0;
   text-align: left;
 }
 
-.workout-focus-shell .workout-add-set > span {
+.workout-focus-shell:not(.landing-demo) .workout-add-set > span {
   justify-content: flex-start;
 }
 
-.workout-set-row[data-done] .workout-set-today {
+.workout-focus-shell:not(.landing-demo) .workout-set-row[data-done] .workout-set-today {
   color: var(--muted);
 }
 
-.workout-set-row[data-done] .workout-set-toggle {
+.workout-focus-shell:not(.landing-demo) .workout-set-row[data-done] .workout-set-toggle {
   color: var(--muted);
 }
 
@@ -10337,26 +10338,26 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 /* The set panel is part of the screen: flat, its top edge is the rest line. */
-.workout-set-panel {
+.workout-focus-shell:not(.landing-demo) .workout-set-panel {
   border-top: 1px solid var(--border);
   border-radius: 0;
   background: var(--puls-surface-1);
   box-shadow: none;
 }
 
-.workout-set-panel .rest-timer-progress {
+.workout-focus-shell:not(.landing-demo) .workout-set-panel .rest-timer-progress {
   top: -1px;
   right: auto;
   left: 0;
   width: 100%;
 }
 
-.workout-set-panel .rest-timer-progress-fill {
+.workout-focus-shell:not(.landing-demo) .workout-set-panel .rest-timer-progress-fill {
   height: 2px;
   background: var(--seam);
 }
 
-.workout-set-panel .rest-timer-label {
+.workout-focus-shell:not(.landing-demo) .workout-set-panel .rest-timer-label {
   flex-wrap: wrap;
   align-items: baseline;
   column-gap: 0.5rem;
@@ -10405,7 +10406,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     padding-inline: 0;
   }
 
-  .workout-set-panel {
+  .workout-focus-shell:not(.landing-demo) .workout-set-panel {
     border-top: 0;
     background: var(--selected-bg);
   }

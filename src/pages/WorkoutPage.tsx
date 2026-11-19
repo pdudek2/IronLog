@@ -129,7 +129,7 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', next }: RestT
             <button
               type="button"
               onClick={onSkip}
-              className="rest-timer-action"
+              className="rest-timer-action rest-timer-skip"
               aria-label="Skip rest"
             >
               Skip
@@ -139,7 +139,7 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', next }: RestT
           <button
             type="button"
             onClick={onSkip}
-            className="rest-timer-action"
+            className="rest-timer-action rest-timer-skip"
             aria-label="Close"
           >
             OK

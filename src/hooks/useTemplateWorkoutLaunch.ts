@@ -12,6 +12,7 @@ import {
   type WorkoutTemplate,
 } from '../lib/templateService'
 import { useWorkoutStore } from '../store/workoutStore'
+import { preloadRouteByPath } from '../router/pageLoaders'
 
 export interface TemplateLaunchTarget {
   template: WorkoutTemplate
@@ -95,6 +96,8 @@ export function useTemplateWorkoutLaunch(
       errorMessage: null,
     })
 
+    // The session page loads with the request, so Train goes straight to it with no step between.
+    const pageReady = preloadRouteByPath('/workout/new').catch(() => undefined)
     try {
       const currentTemplates = await getTemplates(uid)
       if (!isCurrentLaunch(generation)) return
@@ -129,10 +132,11 @@ export function useTemplateWorkoutLaunch(
             currentTarget.dayIndex,
             replaceExisting,
           )
+      await pageReady
       if (!isCurrentLaunch(generation)) return
-      setLaunchOperation(null)
+      // The operation stays pending until this screen goes, so it keeps showing Starting… instead of the running workout.
       hydrateFromDoc(workout)
-      navigate('/workout/new')
+      navigate('/workout/new', { state: { launched: true } })
     } catch (error) {
       if (!isCurrentLaunch(generation)) return
       if (!replaceExisting && error instanceof TemplateLaunchConflictError) {

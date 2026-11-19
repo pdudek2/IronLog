@@ -48,6 +48,12 @@ describe('ActiveWorkoutReturnBar', () => {
     expect(region).toHaveTextContent(activeSession.label!)
     expect(region).toHaveTextContent('05:05')
     expect(region).not.toHaveTextContent(/saved|cloud/i)
+    expect(region).not.toHaveTextContent('rest')
+
+    act(() => useWorkoutStore.getState().startRestTimer(90))
+    expect(region).toHaveTextContent('rest 1:30')
+    act(() => { vi.advanceTimersByTime(91_000) })
+    expect(region).not.toHaveTextContent('rest')
 
     fireEvent.click(screen.getByRole('button', { name: 'Return to workout' }))
 

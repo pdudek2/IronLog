@@ -1,10 +1,10 @@
 import React from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Check, ChevronDown, Plus, Trash2, X } from 'lucide-react'
+import { Check, Ellipsis, Plus, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
 import { useWorkoutStore, type WorkoutExercise } from '../../store/workoutStore'
 import type { SessionHint } from '../../shared/progression'
-import { getExerciseSessions, type ExerciseSession } from '../../lib/exerciseDetailService'
+import { usePreviousSets } from './sessionHelpers'
 import type { Units } from '../../lib/userProfile'
 
 import { exerciseMetrics, formatPreviousSet, setPairLabel } from '../../shared/workoutDisplay'
@@ -12,7 +12,6 @@ import { exerciseMetrics, formatPreviousSet, setPairLabel } from '../../shared/w
 interface WorkoutExerciseLedgerItemProps {
   exerciseClientId: string
   exerciseIndex: number
-  exerciseCount: number
   fallbackExercise: WorkoutExercise | null
   categoryLabel?: string
   equipmentLabel?: string
@@ -26,7 +25,6 @@ interface WorkoutExerciseLedgerItemProps {
   onAddSet: (exerciseIndex: number, button: HTMLButtonElement) => void
   onApplySuggestion: (exerciseIndex: number, hintKey: string, values: { weight?: number; reps?: number }) => void
   onDismissSuggestion: (hintKey: string) => void
-  onOpenOverview: () => void
   drawnSetIndex: number | null
   onRemoveExercise: (exerciseIndex: number) => void
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void
@@ -71,14 +69,12 @@ function SetTick({ draw }: { draw: boolean }) {
 const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem({
   exerciseClientId,
   exerciseIndex,
-  exerciseCount,
   fallbackExercise,
   categoryLabel,
   equipmentLabel,
   panelSetIndex,
   inlinePanel,
   hintDismissed,
-  onOpenOverview,
   drawnSetIndex,
   hintKey,
   suggestion,
@@ -95,25 +91,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   const liveExercise = useWorkoutStore((state) => selectExerciseByIdentity(state, exerciseIndex, exerciseClientId))
   // AnimatePresence keeps exiting children mounted after the selector loses the exercise.
   const exercise = liveExercise ?? fallbackExercise
-  const historyExerciseId = exercise?.exerciseId
-  const historyExerciseSource = exercise?.exerciseSource
-  const [previousSets, setPreviousSets] = React.useState<ExerciseSession['sets']>([])
-
-  React.useEffect(() => {
-    let active = true
-    setPreviousSets([])
-    if (!userId || !historyExerciseId || !historyExerciseSource) return () => { active = false }
-
-    getExerciseSessions(userId, historyExerciseId, historyExerciseSource, 1)
-      .then(([session]) => {
-        if (active) setPreviousSets(session?.sets ?? [])
-      })
-      .catch(() => {
-        if (active) setPreviousSets([])
-      })
-
-    return () => { active = false }
-  }, [historyExerciseId, historyExerciseSource, userId])
+  const [previousSets = []] = usePreviousSets(userId, exercise ? [exercise] : [])
 
   if (!exercise) return null
 
@@ -177,10 +155,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       exit={{ opacity: 0, transition: { duration: 0.1 } }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
     >
-      <button type="button" className="workout-exercise-position" aria-haspopup="dialog" onClick={onOpenOverview}>
-        Exercise {exerciseIndex + 1} of {exerciseCount}
-        <ChevronDown size={14} aria-hidden="true" />
-      </button>
       <div className="workout-exercise-head">
         <div className="min-w-0">
           <h2 className="workout-exercise-name">{exercise.name}</h2>
@@ -195,10 +169,10 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         <button
           type="button"
           onClick={() => onRemoveExercise(exerciseIndex)}
-          className="workout-exercise-head-remove"
-          aria-label={`Remove exercise ${exercise.name}`}
+          className="workout-exercise-more"
+          aria-label={`More for ${exercise.name}`}
         >
-          <Trash2 size={17} aria-hidden="true" />
+          <Ellipsis size={18} aria-hidden="true" />
         </button>
       </div>
 

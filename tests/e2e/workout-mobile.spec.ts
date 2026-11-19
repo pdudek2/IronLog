@@ -77,7 +77,7 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
   expect(box!.x, `${label} left edge`).toBeGreaterThanOrEqual(0)
   expect(box!.x + box!.width, `${label} right edge`).toBeLessThanOrEqual(viewport!.width)
 
-  const lifecycleBar = page.locator('.workout-mobile-lifecycle-bar')
+  const lifecycleBar = page.locator('.workout-session-top')
   const panel = page.locator('.workout-set-panel')
   const insidePanel = await locator.evaluate((element) => element.closest('.workout-set-panel') !== null)
   let visibleTop = 0
@@ -235,7 +235,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(exerciseCard.locator('.workout-exercise-meta')).toBeVisible()
 
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
-    await expect(page.locator('.workout-mobile-lifecycle-bar')).toHaveCSS(
+    await expect(page.locator('.workout-session-top')).toHaveCSS(
       'background-color',
       'rgb(13, 11, 10)',
     )
@@ -287,11 +287,13 @@ test.describe('Active workout shell reduction', () => {
     await expect(onlyCard).toContainText('Bench Press')
     await expect(page.getByRole('dialog', { name: 'Add exercise' })).toHaveCount(0)
 
-    await page.getByRole('button', { name: /^Exercise 2 of 2/ }).click()
-    await page.getByRole('dialog', { name: 'This workout' }).getByRole('button', { name: /^Squat/ }).click()
+    // One list in plan order: the other exercise is a collapsed row, and tapping it opens it in place.
+    await expect(page.locator('.workout-list-row')).toHaveCount(1)
+    await page.locator('.workout-list-row').filter({ hasText: 'Squat' }).click()
     await expect(onlyCard).toHaveCount(1)
     await expect(onlyCard).toContainText('Squat')
-    await expect(page.getByRole('region', { name: 'Up next' }).getByRole('button').filter({ hasNotText: 'Short on time?' })).toHaveCount(1)
+    await expect(page.locator('.workout-list-row')).toHaveCount(1)
+    await expect(page.locator('.workout-list-row')).toContainText('Bench Press')
 
     await currentSetPanel(page).getByRole('button', { name: 'Go to Bench Press' }).click()
     await expect(onlyCard).toContainText('Bench Press')
@@ -332,7 +334,7 @@ test.describe('Active workout shell reduction', () => {
           + bottomPadding('.workout-session-grid')
           + bottomPadding('.workout-session-list'),
         finalActionBottom: finalActionBox?.bottom,
-        panelBackground: panel ? window.getComputedStyle(panel).backgroundImage : undefined,
+        panelBackground: panel ? window.getComputedStyle(panel).backgroundColor : undefined,
         panelBottom: panelBox?.bottom,
         panelHeight: panelBox?.height,
         panelTop: panelBox?.top,
@@ -340,14 +342,14 @@ test.describe('Active workout shell reduction', () => {
       }
     })
 
-    expect(dockGeometry.panelBackground).not.toBe('none')
-    expect(dockGeometry.panelBackground).not.toMatch(/rgba|transparent/)
+    // Flat and opaque: the plate's own surface.
+    expect(dockGeometry.panelBackground).toBe('rgb(28, 24, 22)')
     expect(dockGeometry.panelBottom).toBeLessThanOrEqual(dockGeometry.viewportHeight)
     expect(dockGeometry.contentBottomPadding).toBeGreaterThanOrEqual(dockGeometry.panelHeight! + 16)
     expect(dockGeometry.finalActionBottom).toBeLessThanOrEqual(dockGeometry.panelTop! - 8)
   })
 
-  test('mobile workout keeps the compact shell and leaves through Minimize', async ({ page, cleanup }, testInfo) => {
+  test('mobile workout keeps the compact shell and leaves through Back to Train', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
@@ -363,7 +365,7 @@ test.describe('Active workout shell reduction', () => {
     expect(expectedSession.exerciseNames).toEqual(['Squat'])
     expect(expectedSession.reps).toBe('')
 
-    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await page.getByRole('button', { name: 'Back to Train' }).click()
     await expect(page).toHaveURL('/dashboard')
 
     await expect.poll(
@@ -393,7 +395,7 @@ test.describe('Active workout shell reduction', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
 
-    const lifecycleBar = page.locator('.workout-mobile-lifecycle-bar')
+    const lifecycleBar = page.locator('.workout-session-top')
     await expect(lifecycleBar.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0)
 
     const optionsButton = lifecycleBar.getByRole('button', { name: 'More workout options' })
@@ -421,7 +423,8 @@ test.describe('Active workout shell reduction', () => {
 
     await addExercise(page, 'Squat')
 
-    expect(await visibleCount(page.getByRole('button', { name: 'Add exercise', exact: true }))).toBe(0)
+    // The empty state's Add exercise gives way to the one at the end of the list.
+    expect(await visibleCount(page.getByRole('button', { name: 'Add exercise', exact: true }))).toBe(1)
     await expect(page.locator('.workout-set-row').first()).toBeVisible()
     await expectFullyInViewport(page, page.locator('.workout-set-row[data-current] .workout-set-today'), 'First set row')
     const panel = currentSetPanel(page)
@@ -517,9 +520,10 @@ test.describe('Active workout shell reduction', () => {
     await panel.getByRole('button', { name: 'Adjust reps by -1', exact: true }).click()
     await expect(repsInput).toHaveValue('8')
     await panel.getByRole('button', { name: 'Log set 1 for Squat' }).click()
-    await expect(page.getByRole('button', { name: 'Unmark set 1 for Squat' })).toHaveCSS('color', 'rgb(239, 231, 220)')
+    // A logged row is muted with its check.
+    await expect(page.getByRole('button', { name: 'Unmark set 1 for Squat' })).toHaveCSS('color', 'rgb(168, 159, 152)')
 
-    const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar > .tabular-nums').innerText()
+    const sessionTimerText = await page.getByTestId('elapsed-session-timer').innerText()
     const addRestButton = panel.getByRole('button', { name: 'Add 30 seconds' })
     const skipRestButton = panel.getByRole('button', { name: 'Skip rest' })
     await expect(restTimer).toBeVisible()
@@ -653,7 +657,7 @@ test.describe('Active workout shell reduction', () => {
 
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
     await expect(page.locator('.top-nav')).toBeVisible()
-    await expect(page.locator('.workout-desktop-bar')).toBeVisible()
+    await expect(page.locator('.workout-session-header')).toBeVisible()
 
     await addExercise(page, 'Squat')
     await page.getByRole('button', { name: /Add set/i }).click()
@@ -666,7 +670,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.locator('.workout-set-row').nth(1)).toHaveAttribute('data-current', 'true')
     await expect(inlinePanel).toBeVisible()
     await expect(page.getByRole('button', { name: 'Log set 2 for Squat' })).toBeFocused()
-    await expect(page.locator('.workout-desktop-bar')).toContainText('1 of 2 sets')
+    await expect(page.locator('.workout-session-header')).toContainText('1 of 2 sets')
 
     const restTimerBar = page.locator('.rest-timer-bar')
     await expect(restTimerBar).toHaveCount(1)
@@ -678,10 +682,10 @@ test.describe('Active workout shell reduction', () => {
     await page.getByRole('button', { name: 'Skip rest' }).click()
     await expect(restTimerBar).toHaveCount(0)
 
-    const removeExerciseButton = page.getByRole('button', { name: 'Remove exercise Squat' })
+    const removeExerciseButton = page.getByRole('button', { name: 'More for Squat' })
     await removeExerciseButton.click()
 
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'This will remove the exercise and its sets from the active session.' })
+    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Remove this exercise and its sets from the active session?' })
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
     await confirmDialog.getByRole('button', { name: 'Remove exercise' }).click()
 

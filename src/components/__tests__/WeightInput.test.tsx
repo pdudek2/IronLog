@@ -15,4 +15,22 @@ describe('WeightInput', () => {
     for (const key of '0.5') fireEvent.change(input, { target: { value: `${(input as HTMLInputElement).value}${key}` } })
     expect(input).toHaveValue('0.5')
   })
+
+  it('selects the whole value when a focused field is tapped again, so typing replaces it', () => {
+    render(<WeightInput aria-label="Weight" units="kg" value="92.5" onValueChange={() => undefined} />)
+    const input = screen.getByRole('spinbutton', { name: 'Weight' }) as HTMLInputElement
+    input.focus()
+    input.setSelectionRange(1, 1)
+    fireEvent.pointerDown(input)
+    fireEvent.click(input)
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 4])
+
+    // A first tap focuses the field; its own focus handling decides the selection.
+    input.blur()
+    input.setSelectionRange(1, 1)
+    fireEvent.pointerDown(input)
+    input.focus()
+    fireEvent.click(input)
+    expect([input.selectionStart, input.selectionEnd]).toEqual([1, 1])
+  })
 })

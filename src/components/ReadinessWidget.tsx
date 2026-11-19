@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuthStore } from '../store/authStore'
 import {
-  computeReadinessScore,
   getReadiness,
+  saveReadiness,
   todayKey,
   type ReadinessEntry,
 } from '../lib/readinessService'
+import { NORMAL_DAY, ROUGH_DAY } from '../shared/readiness'
 import type { DataState } from '../types/dataState'
-import ReadinessPrompt from './ReadinessPrompt'
-import Button from './ui/Button'
 
 interface ReadinessResource {
   key: string
@@ -18,19 +18,18 @@ interface ReadinessResource {
 
 interface ReadinessWidgetProps {
   onStateChange?: (state: DataState<ReadinessEntry | null>) => void
-  renderSaved?: (entry: ReadinessEntry) => ReactNode
-  // Keeps the check-in open for changes once today's entry is saved.
-  editSaved?: boolean
+  // null keeps today's entry loading for Train without a line: there is no plan day to ease.
+  rough: boolean | null
 }
 
 function resourceKey(uid: string, date: string): string {
   return `${uid}:${date}`
 }
 
+// A quiet line under the plan instead of a survey: one tap takes a set off each exercise, Undo brings it back.
 export default function ReadinessWidget({
   onStateChange,
-  renderSaved,
-  editSaved = false,
+  rough,
 }: ReadinessWidgetProps) {
   const { user } = useAuthStore()
   const initialDate = todayKey()
@@ -38,6 +37,7 @@ export default function ReadinessWidget({
     key: user ? resourceKey(user.uid, initialDate) : '',
     state: { status: 'loading' },
   })
+  const [saving, setSaving] = useState(false)
   const mountedRef = useRef(false)
   const requestIdRef = useRef(0)
   const requestedKeyRef = useRef('')
@@ -118,114 +118,44 @@ export default function ReadinessWidget({
     loadReadiness(user.uid, retryDate)
   }
 
-  function handleSaved(saved: ReadinessEntry) {
-    if (saved.userId !== useAuthStore.getState().user?.uid) return
-    const savedKey = resourceKey(saved.userId, saved.date)
-    requestedKeyRef.current = savedKey
-    const state = { status: 'success', data: saved } as const
-    setResource({
-      key: savedKey,
-      state,
-    })
-    onStateChange?.(state)
+  async function choose() {
+    if (!user || saving || rough === null) return
+    const uid = user.uid
+    setSaving(true)
+    try {
+      const saved = await saveReadiness(uid, rough ? NORMAL_DAY : ROUGH_DAY)
+      if (!mountedRef.current || saved.userId !== useAuthStore.getState().user?.uid) return
+      const savedKey = resourceKey(saved.userId, saved.date)
+      requestedKeyRef.current = savedKey
+      const next = { status: 'success', data: saved } as const
+      setResource({ key: savedKey, state: next })
+      onStateChange?.(next)
+    } catch {
+      toast.error('Could not save today’s check-in. Try again.')
+    } finally {
+      if (mountedRef.current) setSaving(false)
+    }
   }
 
-  if (state.status === 'loading') {
-    return (
-      <div className="readiness-card readiness-card--loading animate-pulse" />
-    )
-  }
-
+  if (rough === null) return null
+  // The line keeps its height while today's entry loads, so the links under it stay put.
+  if (state.status === 'loading') return <div className="train-rough" aria-hidden="true" />
   if (state.status === 'error') {
     return (
-      <motion.div
-        className="readiness-card readiness-card--error"
-        role="alert"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-      >
-        <p className="text-sm font-semibold text-white">
-          Could not load readiness
-        </p>
-        <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-          Check your connection and try again.
-        </p>
-        <Button type="button" className="mt-4" onClick={handleRetry}>
-          Try again
-        </Button>
-      </motion.div>
+      <div className="train-rough" role="alert">
+        <span>Could not load today’s check-in.</span>
+        <button type="button" onClick={handleRetry}>Try again</button>
+      </div>
     )
   }
 
-  if (state.data === null || editSaved) {
-    return <ReadinessPrompt entry={state.data} onSaved={handleSaved} />
-  }
-
-  const entry = state.data
-  const customSavedState = renderSaved?.(entry)
-  if (customSavedState !== undefined && customSavedState !== null) {
-    return customSavedState
-  }
-
-  const { score, color, label } = computeReadinessScore(entry)
-
   return (
-    <motion.div
-      className="readiness-card readiness-card--saved"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <p className="eyebrow mb-3" style={{ color: 'var(--accent)' }}>Readiness</p>
-
-      <div className="flex items-center gap-4">
-        <div className="relative flex-none">
-          <svg width="62" height="62" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-            <motion.circle
-              cx="50" cy="50" r="40" fill="none"
-              stroke={color}
-              strokeWidth="8" strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 40}
-              transform="rotate(-90 50 50)"
-              initial={{ strokeDashoffset: 2 * Math.PI * 40 }}
-              animate={{ strokeDashoffset: 2 * Math.PI * 40 * (1 - score / 100) }}
-              transition={{ delay: 0.1, duration: 0.8, ease: 'easeOut' }}
-            />
-            <text x="50" y="54" textAnchor="middle" fill="white" fontSize="22" fontWeight="700" fontFamily="Instrument Sans">
-              {score}
-            </text>
-          </svg>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-white leading-tight">{label}</p>
-          <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>today’s score</p>
-
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {[
-              { label: 'Sleep', value: entry.sleep },
-              { label: 'Mood', value: entry.mood },
-              { label: 'Soreness', value: entry.soreness },
-            ].map(({ label: l, value }) => (
-              <div key={l}>
-                <p className="stat-meta">{l}</p>
-                <p className="mt-1 text-sm font-semibold text-white tabular-nums">{value}/5</p>
-                <div className="mt-1.5 h-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ background: color }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(value / 5) * 100}%` }}
-                    transition={{ delay: 0.3, duration: 0.6, ease: 'easeOut' }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.div>
+    <div className="train-rough">
+      <button type="button" onClick={() => { void choose() }} disabled={saving} aria-label={rough ? 'Rough day. Undo' : 'Rough day? Ease the session'}>
+        <span>{rough ? 'Rough day · ' : 'Rough day? '}</span>
+        <strong>{saving ? 'Saving…' : rough ? 'Undo' : 'Ease the session'}</strong>
+        {!rough && !saving && <ChevronRight size={14} aria-hidden="true" />}
+      </button>
+    </div>
   )
 }

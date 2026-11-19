@@ -147,7 +147,7 @@ test.describe('Template launch contract', () => {
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
     await startFreshSessionWithExercise(page, 'Bench Press')
-    const minimize = page.getByRole('button', { name: 'Minimize workout' })
+    const minimize = page.getByRole('button', { name: 'Back to Train' })
     if (await minimize.isVisible()) await minimize.click()
     else await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Train', exact: true }).click()
     await page.getByRole('button', { name: 'Plans', exact: true }).click()

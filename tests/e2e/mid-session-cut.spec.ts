@@ -62,11 +62,15 @@ test.describe('Short on time mid-session', () => {
       expect(saved.exercises.map((exercise: { exerciseId: string; group?: string }) => `${exercise.exerciseId}@${exercise.group ?? '-'}`))
         .toEqual(['bench-press@-', 'lat-pulldown@-', 'db-lateral-raise@g1', 'db-curl@g1', 'tricep-pushdown@g1'])
 
-      // The session now leads the circuit in rounds: raise, curl, pushdown.
-      for (const name of ['Lateral Raise', 'Dumbbell Curl', 'Tricep Pushdown']) {
-        await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
+      // The time line now says when it ends, and the circuit is one block done in rounds: raise, curl, pushdown.
+      await expect(page.getByRole('button', { name: /left · finish by .*Change/ })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Circuit, 3 rounds' })).toBeVisible()
+      const panel = page.getByRole('region', { name: 'Current set' })
+      for (const [letter, name] of [['A', 'Lateral Raise'], ['B', 'Dumbbell Curl'], ['C', 'Tricep Pushdown']]) {
+        await expect(panel).toContainText(`${letter} · ${name} · round 1 of 3`)
         await page.getByRole('button', { name: 'Log set' }).click()
       }
+      await expect(panel).toContainText('then A · Lateral Raise · round 2 of 3')
       await page.getByRole('button', { name: 'Finish', exact: true }).first().click()
       await page.getByRole('button', { name: /Save \d+ sets and finish/ }).click()
       await expect.poll(async () => (await db.doc(`workouts/cut-${uid}`).get()).data()?.compression?.cut?.leftMin, { timeout: 20_000 }).toBe(15)

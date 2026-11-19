@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, ChevronDown, ChevronRight, Ellipsis, Plus, Trash2 } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Ellipsis, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -19,6 +19,8 @@ import { ActiveSessionSyncStatus } from '../components/workout/ActiveSessionSync
 import { ActionFeedback } from '../components/ActionFeedback'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
+import { CollapsedExercise, GroupBlock, SessionTimeLine } from '../components/workout/SessionList'
+import { MEMBER_LETTERS } from '../components/workout/sessionHelpers'
 import ExercisePicker from '../components/ExercisePicker'
 import BottomSheet from '../components/BottomSheet'
 import SessionCutSheet from '../components/SessionCutSheet'
@@ -32,7 +34,6 @@ import { buildProgression, planTarget, sessionHint, type ProgressionSession } fr
 import { exercises as exerciseDb } from '../data/exercises'
 import { isActiveSessionStale } from '../lib/sessionDuration'
 import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
-import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 import { completedSetError, MAX_SESSION_EXERCISES, needsWeightConfirm } from '../shared/workoutLimits'
 import { lastSessionBest, weightSlip } from '../shared/setInput'
@@ -42,7 +43,7 @@ import {
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, nextGroupMember, panelSetIndex, removeSetMessage, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, focusExerciseIndex, nextGroupMember, panelSetIndex, removeSetMessage, restAfterSet, sessionBlocks, upNextQueue } from '../shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../shared/nextSessionRecommendation'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string; done: boolean }
@@ -52,10 +53,10 @@ interface RestTimerBarProps {
   onAddTime: (deltaSec: number) => void
   onSkip: () => void
   variant?: 'full' | 'compact'
-  label: string
+  next: string
 }
 
-function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', label }: RestTimerBarProps) {
+function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', next }: RestTimerBarProps) {
   const [now, setNow] = useState(() => Date.now())
   const firedRef = useRef(false)
   const onSkipRef = useRef(onSkip)
@@ -105,10 +106,11 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', label }: Rest
             <span>Ready — time for the next set</span>
           ) : (
             <>
-              <span style={{ color: 'var(--muted)' }}>{label}</span>
+              <span style={{ color: 'var(--muted)' }}>Rest</span>
               <span className="rest-timer-value tabular-nums">
                 {Math.floor(restRemainingSec / 60)}:{String(restRemainingSec % 60).padStart(2, '0')}
               </span>
+              <small className="rest-timer-next">then {next}</small>
             </>
           )}
         </div>
@@ -182,8 +184,10 @@ export default function WorkoutPage() {
   } = useWorkoutStore()
   const navigate = useNavigate()
   const location = useLocation()
-  const routeState = location.state as { startNew?: unknown } | null
+  const routeState = location.state as { startNew?: unknown; launched?: unknown } | null
   const shouldStartFromRoute = routeState?.startNew === true
+  // A plan just started on Train is already in the store, so it shows (locked) while the session is confirmed.
+  const justLaunched = routeState?.launched === true
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const { compactFixedUi } = useMobileInteraction()
   const mobileRestVariant = compactFixedUi ? 'compact' : 'full'
@@ -210,13 +214,13 @@ export default function WorkoutPage() {
   const [closureRejection, setClosureRejection] = useState<string | null>(null)
   const addExerciseRef = useRef<HTMLButtonElement>(null)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
-  const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
+  const scrolledBlockRef = useRef<string | null>(null)
   const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setIndex: number; draw: boolean } | null>(null)
   const [manualExerciseClientId, setManualExerciseClientId] = useState<string | null>(null)
   const [selectedSet, setSelectedSet] = useState<{ exerciseId: string; setId: string } | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const keepTrainingRef = useRef<HTMLButtonElement>(null)
-  const [sessionSheet, setSessionSheet] = useState<'overview' | 'options' | 'type' | null>(null)
+  const [sessionSheet, setSessionSheet] = useState<'options' | 'type' | null>(null)
   const [cutOpen, setCutOpen] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingFinish, setPendingFinish] = useState<{ uid: string; sessionId: string } | null>(null)
@@ -239,10 +243,10 @@ export default function WorkoutPage() {
   const fetchedKeys = useRef(new Set<string>())
 
   useEffect(() => {
-    if (!ready || !shouldStartFromRoute) return
+    if (!ready || (!shouldStartFromRoute && !justLaunched)) return
     navigate(location.pathname, { replace: true, state: null })
-    if (!active) void startNewSession()
-  }, [active, location.pathname, navigate, ready, shouldStartFromRoute, startNewSession])
+    if (shouldStartFromRoute && !active) void startNewSession()
+  }, [active, justLaunched, location.pathname, navigate, ready, shouldStartFromRoute, startNewSession])
 
   const handleToggleSet = useCallback(function toggleSet(exerciseIndex: number, setIndex: number, confirmed = false) {
     const { active: currentActive, toggleSetDone } = useWorkoutStore.getState()
@@ -544,23 +548,16 @@ export default function WorkoutPage() {
     setConfirmDiscard(true)
   }
 
+  // The exercise's ⋯: removing is the one action there, and it always asks.
   const handleRemoveExercise = useCallback((exerciseIndex: number) => {
     const currentActive = useWorkoutStore.getState().active
     const exercise = currentActive?.exercises[exerciseIndex]
     if (!exercise) return
-    const hasEnteredSets = exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
-    if (hasEnteredSets) {
-      if (!exercise.clientId) {
-        toast.error('Could not prepare to safely remove this exercise. Refresh the view and try again.')
-        return
-      }
-      setPendingExerciseRemoval({ sessionId: currentActive.sessionId, exerciseClientId: exercise.clientId })
+    if (!exercise.clientId) {
+      toast.error('Could not prepare to safely remove this exercise. Refresh the view and try again.')
       return
     }
-    if (currentActive.exercises.length === 1) {
-      setKeepExerciseStackMounted(true)
-    }
-    useWorkoutStore.getState().removeExercise(exerciseIndex)
+    setPendingExerciseRemoval({ sessionId: currentActive.sessionId, exerciseClientId: exercise.clientId })
   }, [])
 
   function handleConfirmRemoveExercise() {
@@ -569,10 +566,7 @@ export default function WorkoutPage() {
     const index = currentActive?.sessionId === pendingExerciseRemoval.sessionId
       ? currentActive.exercises.findIndex((exercise) => exercise.clientId === pendingExerciseRemoval.exerciseClientId)
       : -1
-    if (index >= 0) {
-      if (currentActive?.exercises.length === 1) setKeepExerciseStackMounted(true)
-      removeExercise(index)
-    }
+    if (index >= 0) removeExercise(index)
     setPendingExerciseRemoval(null)
   }
 
@@ -685,7 +679,8 @@ export default function WorkoutPage() {
     }
   }
 
-  if (!ready) {
+  const confirming = !ready && justLaunched && active !== null
+  if (!ready && !confirming) {
     if (activeSessionSyncStatus === 'failed') {
       return (
         <div className="mx-auto max-w-lg">
@@ -700,7 +695,7 @@ export default function WorkoutPage() {
     return <WorkoutLoadingSkeleton />
   }
 
-  if (staleSession) {
+  if (staleSession && !confirming) {
     return (
       <div className="mx-auto max-w-lg">
         <div className="surface-panel rounded-[var(--radius-xl)] p-6">
@@ -785,7 +780,6 @@ export default function WorkoutPage() {
 
   const focusedIndex = focusExerciseIndex(active.exercises)
   const manualIndex = active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === manualExerciseClientId)
-  const showExerciseStack = active.exercises.length > 0 || keepExerciseStackMounted
   const panelIndex = manualIndex >= 0 ? manualIndex : focusedIndex
   const panelExercise = panelIndex >= 0 ? active.exercises[panelIndex] ?? null : null
   const currentExerciseClientId = panelExercise ? getExerciseClientId(panelExercise, panelIndex) : null
@@ -793,22 +787,55 @@ export default function WorkoutPage() {
   const currentSetIndex = panelExercise ? panelSetIndex(panelExercise.sets, selectedSetId) : -1
   const queue = upNextQueue(active.exercises, panelIndex)
   const nextExerciseIndex = queue[0] ?? -1
+  const blocks = sessionBlocks(active.exercises)
+  const currentBlock = blocks.find((block) => block.kind === 'group' ? block.indices.includes(panelIndex) : block.index === panelIndex)
+  const currentBlockKey = currentBlock ? currentBlock.kind === 'group' ? `group:${currentBlock.group}` : currentExerciseClientId : null
+  // A newly current exercise or group is brought just under the header; the first one only when it is not at the top.
+  const currentBlockRef = (node: HTMLDivElement | null) => {
+    if (!node || scrolledBlockRef.current === currentBlockKey) return
+    const first = scrolledBlockRef.current === null
+    scrolledBlockRef.current = currentBlockKey
+    if (!first || blocks[0] !== currentBlock) node.scrollIntoView?.({ block: 'start', behavior: first ? 'auto' : 'smooth' })
+  }
   const goToExercise = (index: number) => {
     const exercise = active.exercises[index]
     if (!exercise) return
     setManualExerciseClientId(getExerciseClientId(exercise, index))
     setSelectedSet(null)
     setLastLogged((logged) => logged && { ...logged, draw: false })
-    window.scrollTo({ top: 0 })
+  }
+  const selectMemberSet = (index: number, setIndex: number) => {
+    const exercise = active.exercises[index]
+    const set = exercise?.sets[setIndex]
+    if (!exercise || !set) return
+    const clientId = getExerciseClientId(exercise, index)
+    setManualExerciseClientId(clientId)
+    setSelectedSet({ exerciseId: clientId, setId: set.clientId ?? String(setIndex) })
+  }
+  const userExerciseMeta = new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))
+  const metaLine = (exercise: WorkoutExercise) => {
+    const meta = exerciseCatalog.get(exercise.exerciseId)
+    const category = meta?.category ? (EXERCISE_CATEGORY_LABELS[meta.category] ?? meta.category) : undefined
+    const equipment = meta?.equipment ? (EQUIPMENT_LABELS[meta.equipment] ?? meta.equipment) : undefined
+    return [category, equipment].filter(Boolean).join(' · ') || null
   }
   const panelSet = (currentSetIndex >= 0 ? panelExercise?.sets[currentSetIndex] : null) ?? null
+  // The panel names the exercise and set its numbers go to; in a pair or circuit, the member and its round.
+  const panelTitle = (() => {
+    if (!panelExercise || !panelSet) return 'All sets done'
+    if (currentBlock?.kind === 'group') {
+      const rounds = Math.max(...currentBlock.indices.map((index) => active.exercises[index]?.sets.length ?? 0))
+      return `${MEMBER_LETTERS[currentBlock.indices.indexOf(panelIndex)] ?? '?'} · ${panelExercise.name} · ${panelSet.done ? 'editing ' : ''}round ${currentSetIndex + 1} of ${rounds}`
+    }
+    return `${panelExercise.name} · ${panelSet.done ? 'editing ' : ''}set ${currentSetIndex + 1} of ${panelExercise.sets.length}`
+  })()
   const setPanel = panelExercise && (
     <WorkoutSetPanel
       exerciseIndex={panelIndex}
       exerciseName={panelExercise.name}
+      title={panelTitle}
       set={panelSet}
       setIndex={currentSetIndex}
-      setCount={panelExercise.sets.length}
       units={units}
       openSetIndex={panelExercise.sets.findIndex((set) => !set.done)}
       nextExercise={nextExerciseIndex >= 0
@@ -821,7 +848,7 @@ export default function WorkoutPage() {
           onAddTime={handleAddRestTime}
           onSkip={handleSkipRest}
           variant={isDesktop ? 'full' : mobileRestVariant}
-          label={setPanelRestLabel(panelSet, currentSetIndex)}
+          next={panelTitle}
         />
       ) : null}
       onAdjustSet={handleAdjustSet}
@@ -832,12 +859,102 @@ export default function WorkoutPage() {
       onFinish={handleFinish}
     />
   )
+  const ledgerItem = (exercise: WorkoutExercise, index: number) => {
+    const clientId = getExerciseClientId(exercise, index)
+    const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
+    const historyKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
+    const hint = sessionHint(
+      histories[historyKey] && lowReadiness !== null && (!templateId || sessionTemplate?.id === templateId) ? buildProgression({
+        sessions: histories[historyKey],
+        target: planTarget(templateId ? sessionTemplate?.template : null, exercise.exerciseId, exercise.exerciseSource, active?.planDayId),
+        equipment: exerciseMeta?.equipment,
+        category: exerciseMeta?.category,
+        units,
+        lowReadiness,
+        now: Date.now(),
+      }) : null,
+      exercise.sets,
+      units,
+      exerciseMeta?.equipment,
+    )
+    // A trial announces itself and then proposes a weight; dismissing one must not hide the next.
+    const hintKey = `${historyKey}|${hint?.label ?? ''}`
+    return (
+      <WorkoutExerciseLedgerItem
+        key={clientId}
+        exerciseClientId={clientId}
+        exerciseIndex={index}
+        fallbackExercise={exerciseSnapshotByClientId.get(clientId) ?? exercise}
+        categoryLabel={exerciseMeta?.category ? (EXERCISE_CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
+        equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
+        panelSetIndex={currentSetIndex}
+        inlinePanel={isDesktop ? setPanel : undefined}
+        hintDismissed={dismissedHints.has(hintKey)}
+        hintKey={hintKey}
+        suggestion={hint}
+        units={units}
+        userId={user?.uid}
+        onAddSet={handleAddSet}
+        onApplySuggestion={handleApplySuggestion}
+        onDismissSuggestion={handleDismissSuggestion}
+        drawnSetIndex={lastLogged?.draw && lastLogged.exerciseId === clientId ? lastLogged.setIndex : null}
+        onRemoveExercise={handleRemoveExercise}
+        onRemoveSet={handleRemoveSet}
+        onSelectSet={(setIndex) => {
+          const set = exercise.sets[setIndex]
+          if (set) setSelectedSet({ exerciseId: clientId, setId: set.clientId ?? String(setIndex) })
+        }}
+        onToggleSet={handleToggleSet}
+      />
+    )
+  }
+  const sessionHeader = (
+    <div className="workout-session-header">
+      <button
+        type="button"
+        className="workout-back"
+        onClick={() => navigate('/dashboard')}
+        disabled={closureLocked}
+        aria-label="Back to Train"
+        aria-describedby="workout-back-help"
+      >
+        <ChevronLeft size={20} aria-hidden="true" />
+      </button>
+      <span id="workout-back-help" className="sr-only">Your workout keeps running</span>
+      <span className="workout-session-title">
+        <strong>{activeLabel}</strong>
+        <small className="tabular-nums">
+          <ElapsedSessionTimer startedAt={active.startedAt} />
+          {totalSets > 0 && ` · ${completedSets} of ${totalSets} ${pluralize(totalSets, 'set', 'sets')}`}
+        </small>
+      </span>
+      <button
+        type="button"
+        className="workout-mobile-options-trigger"
+        onClick={() => setSessionSheet('options')}
+        aria-label="More workout options"
+        aria-haspopup="dialog"
+      >
+        <Ellipsis size={20} aria-hidden="true" />
+      </button>
+      <motion.button
+        type="button"
+        className="workout-desktop-finish"
+        onClick={handleFinish}
+        disabled={saving}
+        whileTap={{ scale: 0.95 }}
+      >
+        {saving ? '...' : 'Finish'}
+      </motion.button>
+    </div>
+  )
 
   return (
     <div
       className="workout-focus-shell"
       role="region"
       aria-label={`Active session: ${activeLabel}`}
+      data-panel={setPanel && !isDesktop ? true : undefined}
     >
       {closureState !== 'active_session_changed' && (
         <ActiveSessionSyncStatus
@@ -958,232 +1075,107 @@ export default function WorkoutPage() {
         </div>
       )}
 
-      <div className="contents" inert={closureLocked ? true : undefined}>
+      <div className="contents" inert={closureLocked || confirming ? true : undefined}>
 
-      {/* ── Mobile sticky header ─────────────────── */}
-      {!isDesktop && (
-        <div
-          className="workout-mobile-lifecycle-bar fixed top-0 left-0 right-0 z-40 flex items-center gap-2 lg:hidden"
-          style={{
-            paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-            paddingBottom: '0.75rem',
-            paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
-            paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
-            background: 'rgba(13, 12, 14, 0.95)',
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          <ElapsedSessionTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
-          <button
-            type="button"
-            className="workout-mobile-minimize"
-            onClick={() => navigate('/dashboard')}
-            disabled={closureLocked}
-            aria-label="Minimize workout"
-            aria-describedby="workout-mobile-minimize-help"
-          >
-            <ChevronDown size={17} aria-hidden="true" />
-            <span>
-              <strong>{activeLabel}</strong>
-              {totalSets > 0 && <small className="tabular-nums">{completedSets} of {totalSets} {pluralize(totalSets, 'set', 'sets')}</small>}
-            </span>
-          </button>
-          <span id="workout-mobile-minimize-help" className="sr-only">Your workout keeps running</span>
-          <button
-            type="button"
-            className="workout-mobile-options-trigger"
-            onClick={() => setSessionSheet('options')}
-            aria-label="More workout options"
-            aria-haspopup="dialog"
-          >
-            <Ellipsis size={20} aria-hidden="true" />
-          </button>
-          <motion.button
-            type="button"
-            onClick={handleFinish}
-            disabled={saving}
-            className="flex-none rounded-xl px-5 text-sm font-bold min-h-11"
-            style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
-            whileTap={{ scale: 0.93 }}
-          >
-            {saving ? '...' : 'Finish'}
-          </motion.button>
-        </div>
-      )}
+      <div className="workout-session-top">
+        {sessionHeader}
+        {active.exercises.length > 0 && (
+          <>
+            <div className="workout-progress" aria-hidden="true"><i style={{ width: `${totalSets ? completedSets / totalSets * 100 : 0}%` }} /></div>
+            <SessionTimeLine session={active} userExercises={userExerciseMeta} onOpen={() => setCutOpen(true)} />
+          </>
+        )}
+      </div>
 
       <div className="workout-session-grid">
-
         <div className="workout-session-list min-w-0">
-          {isDesktop && (
-            <div className="workout-desktop-bar">
-              <ElapsedSessionTimer startedAt={active.startedAt} className="workout-desktop-time" />
-              <span className="workout-desktop-label">{activeLabel}</span>
-              {totalSets > 0 && (
-                <span className="workout-desktop-sets">{completedSets} of {totalSets} {pluralize(totalSets, 'set', 'sets')}</span>
-              )}
-              <button
-                type="button"
-                className="workout-desktop-options"
-                onClick={() => setSessionSheet('options')}
-                aria-label="More workout options"
-                aria-haspopup="dialog"
-              >
-                <Ellipsis size={20} aria-hidden="true" />
-              </button>
-              <motion.button
-                type="button"
-                className="workout-desktop-finish"
-                onClick={handleFinish}
-                disabled={saving}
-                whileTap={{ scale: 0.97 }}
-              >
-                {saving ? '...' : 'Finish'}
-              </motion.button>
-            </div>
-          )}
-          <div className="workout-band" aria-hidden="true">
-            <img src={`/covers/${workoutCover(activeLabel)}.jpg`} alt="" />
-          </div>
-          <div className="workout-segs" aria-hidden="true">
-            {active.exercises.map((exercise, index) => (
-              <i key={getExerciseClientId(exercise, index)} data-current={index === panelIndex}>
-                <b style={{ width: `${exercise.sets.length ? exercise.sets.filter((set) => set.done).length / exercise.sets.length * 100 : 0}%` }} />
-              </i>
-            ))}
-          </div>
-          <div className="flex flex-col gap-4">
-            {active.exercises.length === 0 && !keepExerciseStackMounted && (
-              <>
-                <section className="workout-empty-state" aria-label="No exercises yet">
-                  <motion.button
-                    ref={addExerciseRef}
-                    type="button"
-                    onClick={() => setShowPicker(true)}
-                    className="workout-primary-action"
-                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <Plus size={16} strokeWidth={2.4} />
-                    Add exercise
-                  </motion.button>
-                </section>
-                {quickPicks.length > 0 && (
-                  <section className="workout-quick-start" aria-labelledby="workout-quick-start-title">
-                    <h3 id="workout-quick-start-title">Recently used</h3>
-                    <div className="workout-quick-pick-list">
-                      {quickPicks.map(({ id, name, source }) => {
-                        const meta = exerciseCatalog.get(id)
-                        return (
-                          <motion.button
-                            key={`${source}:${id}`}
-                            type="button"
-                            onClick={() => handlePickExercise(id, name, source)}
-                            className="workout-quick-pick"
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <span className="workout-quick-pick-copy">
-                              <strong className="workout-quick-pick-name">{name}</strong>
-                              {meta?.category && (
-                                <span className="workout-quick-pick-meta">
-                                  {EXERCISE_CATEGORY_LABELS[meta.category] ?? meta.category}
-                                </span>
-                              )}
-                            </span>
-                            <span className="workout-quick-pick-action">Add</span>
-                          </motion.button>
-                        )
-                      })}
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
-
-            {showExerciseStack && (
-              <>
-                <div className="workout-exercise-stack">
-                  <AnimatePresence mode="wait" initial={false} onExitComplete={() => setKeepExerciseStackMounted(false)}>
-                    {panelExercise && currentExerciseClientId && (() => {
-                      const exerciseMeta = exerciseCatalog.get(panelExercise.exerciseId)
-                      const historyKey = `${panelExercise.exerciseSource}:${panelExercise.exerciseId}`
-                      const hint = sessionHint(
-                        histories[historyKey] && lowReadiness !== null && (!templateId || sessionTemplate?.id === templateId) ? buildProgression({
-                          sessions: histories[historyKey],
-                          target: planTarget(templateId ? sessionTemplate?.template : null, panelExercise.exerciseId, panelExercise.exerciseSource, active?.planDayId),
-                          equipment: exerciseMeta?.equipment,
-                          category: exerciseMeta?.category,
-                          units,
-                          lowReadiness,
-                          now: Date.now(),
-                        }) : null,
-                        panelExercise.sets,
-                        units,
-                        exerciseMeta?.equipment,
-                      )
-                      // A trial announces itself and then proposes a weight; dismissing one must not hide the next.
-                      const hintKey = `${historyKey}|${hint?.label ?? ''}`
+          {active.exercises.length === 0 ? (
+            <>
+              <section className="workout-empty-state" aria-label="No exercises yet">
+                <motion.button
+                  ref={addExerciseRef}
+                  type="button"
+                  onClick={() => setShowPicker(true)}
+                  className="workout-primary-action"
+                  style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Plus size={16} strokeWidth={2.4} />
+                  Add exercise
+                </motion.button>
+              </section>
+              {quickPicks.length > 0 && (
+                <section className="workout-quick-start" aria-labelledby="workout-quick-start-title">
+                  <h3 id="workout-quick-start-title">Recently used</h3>
+                  <div className="workout-quick-pick-list">
+                    {quickPicks.map(({ id, name, source }) => {
+                      const meta = exerciseCatalog.get(id)
                       return (
-                        <WorkoutExerciseLedgerItem
-                          key={currentExerciseClientId}
-                          exerciseClientId={currentExerciseClientId}
-                          exerciseIndex={panelIndex}
-                          exerciseCount={active.exercises.length}
-                          fallbackExercise={exerciseSnapshotByClientId.get(currentExerciseClientId) ?? panelExercise}
-                          categoryLabel={exerciseMeta?.category ? (EXERCISE_CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
-                          equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
-                          panelSetIndex={currentSetIndex}
-                          inlinePanel={isDesktop ? setPanel : undefined}
-                          hintDismissed={dismissedHints.has(hintKey)}
-                          hintKey={hintKey}
-                          suggestion={hint}
-                          units={units}
-                          userId={user?.uid}
-                          onAddSet={handleAddSet}
-                          onApplySuggestion={handleApplySuggestion}
-                          onDismissSuggestion={handleDismissSuggestion}
-                          onOpenOverview={() => setSessionSheet('overview')}
-                          drawnSetIndex={lastLogged?.draw && lastLogged.exerciseId === currentExerciseClientId ? lastLogged.setIndex : null}
-                          onRemoveExercise={handleRemoveExercise}
-                          onRemoveSet={handleRemoveSet}
-                          onSelectSet={(setIndex) => {
-                            const set = panelExercise.sets[setIndex]
-                            if (set) setSelectedSet({ exerciseId: currentExerciseClientId, setId: set.clientId ?? String(setIndex) })
-                          }}
-                          onToggleSet={handleToggleSet}
-                        />
-                      )
-                    })()}
-                  </AnimatePresence>
-                </div>
-
-                {queue.length > 0 && (
-                  <section className="workout-up-next" aria-labelledby="workout-up-next-title">
-                    <div className="workout-up-next-head">
-                      <h3 id="workout-up-next-title">Up next</h3>
-                      <button type="button" className="workout-cut-trigger" onClick={() => setCutOpen(true)} aria-haspopup="dialog">Short on time?</button>
-                    </div>
-                    {queue.map((index) => {
-                      const exercise = active.exercises[index]!
-                      return (
-                        <button key={getExerciseClientId(exercise, index)} type="button" onClick={() => goToExercise(index)}>
-                          <span>{exercise.name}</span>
-                          <small className="tabular-nums">{exerciseTargetLabel(exercise.sets, units)}</small>
-                          <ChevronRight size={16} aria-hidden="true" />
-                        </button>
+                        <motion.button
+                          key={`${source}:${id}`}
+                          type="button"
+                          onClick={() => handlePickExercise(id, name, source)}
+                          className="workout-quick-pick"
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <span className="workout-quick-pick-copy">
+                            <strong className="workout-quick-pick-name">{name}</strong>
+                            {meta?.category && (
+                              <span className="workout-quick-pick-meta">
+                                {EXERCISE_CATEGORY_LABELS[meta.category] ?? meta.category}
+                              </span>
+                            )}
+                          </span>
+                          <span className="workout-quick-pick-action">Add</span>
+                        </motion.button>
                       )
                     })}
-                  </section>
-                )}
-                {isDesktop && (
-                  <button ref={addExerciseRef} type="button" className="workout-desktop-add-exercise" onClick={() => setShowPicker(true)}>
-                    <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
-                    Add exercise
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
+                  </div>
+                </section>
+              )}
+            </>
+          ) : (
+            <div className="workout-exercise-stack">
+              {blocks.map((block) => {
+                if (block.kind === 'group') {
+                  const key = `group:${block.group}`
+                  return (
+                    <div key={key} className="workout-block" ref={key === currentBlockKey ? currentBlockRef : undefined}>
+                      <GroupBlock
+                        session={active}
+                        indices={block.indices}
+                        currentIndex={panelIndex}
+                        panelSet={currentSetIndex}
+                        units={units}
+                        userId={user?.uid}
+                        userExercises={userExerciseMeta}
+                        metaOf={metaLine}
+                        inlinePanel={isDesktop ? setPanel : undefined}
+                        drawnSetId={lastLogged?.draw ? active.exercises.find((exercise, index) => getExerciseClientId(exercise, index) === lastLogged.exerciseId)?.sets[lastLogged.setIndex]?.clientId ?? null : null}
+                        onSelect={selectMemberSet}
+                        onRemove={handleRemoveExercise}
+                        onAddRound={(indices) => {
+                          indices.forEach((index) => useWorkoutStore.getState().addSet(index))
+                          if ('vibrate' in navigator) navigator.vibrate(8)
+                        }}
+                      />
+                    </div>
+                  )
+                }
+                const exercise = active.exercises[block.index]!
+                const clientId = getExerciseClientId(exercise, block.index)
+                return block.index === panelIndex ? (
+                  <div key={clientId} className="workout-block" ref={currentBlockRef}>{ledgerItem(exercise, block.index)}</div>
+                ) : (
+                  <CollapsedExercise key={clientId} exercise={exercise} units={units} onOpen={() => goToExercise(block.index)} />
+                )
+              })}
+              <button ref={addExerciseRef} type="button" className="workout-list-add" onClick={() => setShowPicker(true)}>
+                <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
+                Add exercise
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1193,7 +1185,7 @@ export default function WorkoutPage() {
         {sessionSheet && (
           <BottomSheet
             key="session-sheet"
-            title={sessionSheet === 'overview' ? active.label || 'This workout' : sessionSheet === 'type' ? 'Session type' : 'Workout options'}
+            title={sessionSheet === 'type' ? 'Session type' : 'Workout options'}
             description={sessionSheet === 'options' && isDesktop ? (
               <span className="workout-options-summary tabular-nums">
                 {active.exercises.length} {pluralize(active.exercises.length, 'exercise', 'exercises')} · {completedSets}/{totalSets} sets · {formatCompactVolume(totalVolume, units)}
@@ -1202,29 +1194,7 @@ export default function WorkoutPage() {
             ) : undefined}
             onClose={() => setSessionSheet(null)}
           >
-            {sessionSheet === 'overview' ? (
-              <>
-                {active.exercises.map((exercise, exerciseIndex) => {
-                  const clientId = getExerciseClientId(exercise, exerciseIndex)
-                  return (
-                    <button
-                      key={clientId}
-                      type="button"
-                      className="bottom-sheet-row"
-                      aria-current={clientId === currentExerciseClientId}
-                      onClick={() => { goToExercise(exerciseIndex); setSessionSheet(null) }}
-                    >
-                      <span>{exercise.name}</span>
-                      <small className="tabular-nums">{exercise.sets.filter((set) => set.done).length} of {exercise.sets.length}</small>
-                    </button>
-                  )
-                })}
-                <button type="button" className="bottom-sheet-row" onClick={() => { setSessionSheet(null); setShowPicker(true) }}>
-                  <span>Add exercise</span>
-                  <Plus size={16} aria-hidden="true" />
-                </button>
-              </>
-            ) : sessionSheet === 'type' ? (
+            {sessionSheet === 'type' ? (
               WORKOUT_LABELS.map((label) => (
                 <button
                   key={label}
@@ -1242,16 +1212,6 @@ export default function WorkoutPage() {
                 <button type="button" className="bottom-sheet-row" onClick={() => { setSessionSheet(null); setShowPicker(true) }}>
                   <span>Add exercise</span>
                   <Plus size={16} aria-hidden="true" />
-                </button>
-                {active.exercises.length > 0 && (
-                  <button type="button" className="bottom-sheet-row" onClick={() => setSessionSheet('overview')}>
-                    <span>All exercises</span>
-                    <ChevronRight size={16} aria-hidden="true" />
-                  </button>
-                )}
-                <button type="button" className="bottom-sheet-row" onClick={() => { setSessionSheet(null); setCutOpen(true) }}>
-                  <span>Short on time</span>
-                  <ChevronRight size={16} aria-hidden="true" />
                 </button>
                 <button type="button" className="bottom-sheet-row" onClick={() => setSessionSheet('type')}>
                   <span>Session type</span>
@@ -1354,17 +1314,21 @@ export default function WorkoutPage() {
         )}
       </AnimatePresence>
 
-      {pendingExerciseRemoval !== null && (
+      {pendingExerciseRemoval !== null && (() => {
+        const exercise = active.exercises.find((candidate) => candidate.clientId === pendingExerciseRemoval.exerciseClientId)
+        const entered = exercise?.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
+        return (
         <ConfirmDialog
-          title="Remove exercise?"
-          message="This will remove the exercise and its sets from the active session."
+          title={exercise ? `Remove ${exercise.name}?` : 'Remove exercise?'}
+          message={entered ? 'Remove this exercise and its sets from the active session?' : 'Remove this exercise from the active session?'}
           confirmLabel="Remove exercise"
           cancelLabel="Keep"
           danger
           onConfirm={handleConfirmRemoveExercise}
           onCancel={() => setPendingExerciseRemoval(null)}
         />
-      )}
+        )
+      })()}
       {pendingSetRemoval && (
         <ConfirmDialog
           title="Remove set?"

@@ -11,7 +11,7 @@ const TIME_BUDGETS = [45, 30, 20] as const
 
 const minutes = (sec: number) => Math.round(sec / 60)
 
-// The dock's time row and today's line: what Start launches, before it is pressed.
+// Today's time choice and its line, in the page above the plan: what Start launches, before it is pressed.
 export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, onBudget, onStraight, onFullSets }: {
   today: NextSessionRecommendation
   plannedSets: number
@@ -33,7 +33,7 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, o
   const weights = today.breakDays !== null && today.exercises.some((exercise) => exercise.trial) ? 'First set is a test' : 'Same weights'
 
   return (
-    <div className="train-dock-today">
+    <div className="train-dock-today train-today">
       {today.breakDays !== null && (
         <p className="train-dock-line">{today.breakDays} days since your last workout{fullSets ? '' : ' · fewer sets today'}</p>
       )}
@@ -53,12 +53,16 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, o
         <p className="train-dock-line" role="status">
           <strong>Doesn’t fit in {budgetMin} min.</strong> The shortest version takes {approx}{minutes(compression.estimateSec)} min.
         </p>
-      ) : today.record && (
+      ) : today.record ? (
         <p className="train-dock-line">
-          <strong>{approx}{minutes(compression.estimateSec)} min</strong>{' · '}{kept} of {plannedSets} sets{' · '}{weights}
+          <strong>{approx}{minutes(compression.estimateSec)} min</strong>{' · '}{kept} of {plannedSets} sets{' · '}{today.tone === 'low' && !fullSets ? 'rough day' : weights}
+        </p>
+      ) : (
+        <p className="train-dock-line">
+          <strong>{approx}{usual} min</strong>{' · '}{plannedSets} sets{' · '}plan as written
         </p>
       )}
-      {(today.breakDays !== null || today.tone === 'low') && (
+      {today.breakDays !== null && (
         <label className="train-time-switch">
           <span>Full sets</span>
           <input type="checkbox" role="switch" checked={fullSets} onChange={(event) => onFullSets(event.target.checked)} />
@@ -100,6 +104,7 @@ export function TodayExercises({ uid, template, dayIndex, today, exercises, unit
       <button key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} type="button" className="train-exercise" onClick={() => onOpen(exercise)}>
         <span>{exercise.name}</span>
         <span>
+          {sets < exercise.sets && <small>−{exercise.sets - sets} {exercise.sets - sets === 1 ? 'set' : 'sets'}</small>}
           {sets} × {planned.reps}
           {planned.weight > 0 && <>{' · '}<b>{kgStringToDisplayWeight(String(planned.weight), units)} {units}</b></>}
         </span>

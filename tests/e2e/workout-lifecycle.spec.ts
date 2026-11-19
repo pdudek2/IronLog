@@ -87,7 +87,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     ))
     expect(started).not.toBeNull()
 
-    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await page.getByRole('button', { name: 'Back to Train' }).click()
     await expect(page).toHaveURL('/dashboard')
     const returnBar = page.getByRole('region', { name: 'Active workout' })
     await expect(returnBar).toBeVisible()
@@ -140,7 +140,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       session?.sessionId === sessionId && session.exercises[0]?.sets[0]?.reps === '6'
     ))
 
-    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await page.getByRole('button', { name: 'Back to Train' }).click()
     await expect(page).toHaveURL('/dashboard')
     const returnBar = page.getByRole('region', { name: 'Active workout' })
     await expect(returnBar).toContainText('Resume Phase 1 browse and return with a deliberately long label')
@@ -170,7 +170,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(page).toHaveURL('/workout/new')
     await selectSet(page, 1)
     await expect(reps).toHaveValue('6')
-    await expect(page.locator('.rest-timer-bar')).toContainText('Editing set 1')
+    await expect(page.locator('.rest-timer-bar')).toContainText('editing set 1')
 
     expect(await readLifecycleActiveSession()).toMatchObject({
       sessionId,
@@ -184,13 +184,13 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       async () => {
         await setFirestoreNetworkEnabled(page, false)
         await reps.fill('7')
-        await page.getByRole('button', { name: 'Minimize workout' }).click()
+        await page.getByRole('button', { name: 'Back to Train' }).click()
         await expect(returnBar).toBeVisible()
         await expect(returnBar).not.toContainText(/saved|cloud/i)
         await returnBar.getByRole('button', { name: 'Return to workout' }).click()
         await selectSet(page, 1)
         await expect(reps).toHaveValue('7')
-        await expect(page.locator('.rest-timer-bar')).toContainText('Editing set 1')
+        await expect(page.locator('.rest-timer-bar')).toContainText('editing set 1')
         await setFirestoreNetworkEnabled(page, true)
       },
     )
@@ -198,7 +198,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       session?.sessionId === sessionId && session.exercises[0]?.sets[0]?.reps === '7'
     ))
 
-    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await page.getByRole('button', { name: 'Back to Train' }).click()
     await expect(returnBar).toBeVisible()
     await commitPendingLifecycleFinalization({
       sessionId,
@@ -767,8 +767,8 @@ test('exercise confirmation cannot delete a remotely rehydrated exercise', async
   await seedLifecycleActiveSession({ sessionId })
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new')
-  await page.getByRole('button', { name: 'Remove exercise Phase 1 Bench Press' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Remove exercise?' })
+  await page.getByRole('button', { name: 'More for Phase 1 Bench Press' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Remove Phase 1 Bench Press?' })
   await expect(dialog).toBeVisible()
   await seedLifecycleActiveSession({ sessionId, reps: '9' })
   await expect(page.locator('.workout-set-today')).toHaveText(/× 9$/)

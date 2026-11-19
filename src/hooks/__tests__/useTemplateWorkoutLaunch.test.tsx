@@ -50,6 +50,8 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mocks.navigate }
 })
 
+vi.mock('../../router/pageLoaders', () => ({ preloadRouteByPath: () => Promise.resolve() }))
+
 vi.mock('sonner', () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }))
@@ -131,7 +133,9 @@ describe('useTemplateWorkoutLaunch', () => {
     expect(mocks.hydrateFromDoc).toHaveBeenCalledTimes(1)
     expect(mocks.hydrateFromDoc).toHaveBeenCalledWith(workout)
     expect(mocks.navigate).toHaveBeenCalledTimes(1)
-    expect(mocks.navigate).toHaveBeenCalledWith('/workout/new')
+    expect(mocks.navigate).toHaveBeenCalledWith('/workout/new', { state: { launched: true } })
+    // Train keeps Starting… until the session page replaces it.
+    expect(result.current.launchOperation?.status).toBe('pending')
   })
 
   it.each([

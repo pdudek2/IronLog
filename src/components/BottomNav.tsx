@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Dumbbell, History, MessageSquare, TrendingUp } from 'lucide-react'
@@ -8,8 +8,6 @@ import { preloadRouteByPath } from '../router/pageLoaders'
 import { useWorkoutStore } from '../store/workoutStore'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import { useMobileInteraction } from './MobileInteractionProvider'
-
-const SCROLL_DIRECTION_THRESHOLD = 24
 
 interface NavBtnProps {
   icon: ReactNode
@@ -26,7 +24,7 @@ function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
       onClick={onClick}
       onPointerEnter={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
       onFocus={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
-      className="bottom-nav-button mobile-touch-target flex flex-1 flex-col items-center gap-0.5 py-0.5"
+      className="bottom-nav-button mobile-touch-target flex flex-1 flex-col items-center justify-center gap-0.5"
       data-active={active}
       whileTap={{ scale: 0.88 }}
       style={{ color: active ? 'var(--text-strong)' : 'var(--muted)' }}
@@ -34,7 +32,7 @@ function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
       aria-label={label}
     >
       {icon}
-      <span className="text-xs font-semibold">{label}</span>
+      <span className="text-xs">{label}</span>
     </motion.button>
   )
 }
@@ -44,7 +42,6 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const { inputFocused } = useMobileInteraction()
   const hasActiveSession = useWorkoutStore((state) => state.active !== null)
-  const [scrollHidden, setScrollHidden] = useState(false)
   const navRef = useRef<HTMLElement>(null)
 
   const path = location.pathname
@@ -52,58 +49,8 @@ export default function BottomNav() {
   const workoutDetail = path.startsWith('/workout/') && !workoutActive
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
-  useEffect(() => {
-    if (inputFocused || workoutDetail) return
-
-    let frameId = 0
-    let pending = false
-    let lastScrollY = Math.max(0, window.scrollY)
-    let directionStartY = lastScrollY
-    let direction = 0
-
-    const evaluate = () => {
-      pending = false
-      const currentScrollY = Math.max(0, window.scrollY)
-
-      if (currentScrollY < SCROLL_DIRECTION_THRESHOLD) {
-        setScrollHidden(false)
-        lastScrollY = currentScrollY
-        directionStartY = currentScrollY
-        direction = 0
-        return
-      }
-
-      const nextDirection = Math.sign(currentScrollY - lastScrollY)
-      if (nextDirection === 0) return
-
-      if (nextDirection !== direction) {
-        direction = nextDirection
-        directionStartY = lastScrollY
-      }
-
-      if (Math.abs(currentScrollY - directionStartY) >= SCROLL_DIRECTION_THRESHOLD) {
-        setScrollHidden(direction > 0)
-        directionStartY = currentScrollY
-      }
-
-      lastScrollY = currentScrollY
-    }
-
-    const onScroll = () => {
-      if (pending) return
-      pending = true
-      frameId = window.requestAnimationFrame(evaluate)
-    }
-
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.cancelAnimationFrame(frameId)
-    }
-  }, [inputFocused, workoutDetail])
-
   // With no session /workout/new is a resting page, so the bar stays as the way out.
-  const navHidden = (workoutActive && hasActiveSession) || workoutDetail || inputFocused || scrollHidden
+  const navHidden = (workoutActive && hasActiveSession) || workoutDetail || inputFocused
 
   useEffect(() => {
     if (!navHidden) return
@@ -119,17 +66,10 @@ export default function BottomNav() {
       aria-label="Bottom navigation"
       aria-hidden={navHidden ? true : undefined}
       inert={navHidden}
-      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center lg:hidden"
-      style={{
-        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
-        transform: navHidden ? 'translateY(calc(100% + env(safe-area-inset-bottom, 0px) + 1rem))' : 'translateY(0)',
-        opacity: navHidden ? 0 : 1,
-        pointerEvents: navHidden ? 'none' : 'auto',
-        transition: 'transform 220ms ease, opacity 180ms ease',
-      }}
+      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex flex-col lg:hidden"
     >
       {!workoutDetail && <ActiveWorkoutReturnBar />}
-      <div className="bottom-nav-panel flex w-full items-center gap-1">
+      <div className="bottom-nav-panel flex w-full items-stretch">
         <NavBtn
           icon={<Dumbbell size={20} />}
           label="Train"

@@ -59,7 +59,7 @@ test.describe('Dashboard regressions', () => {
     await expect(page.getByRole('button', { name: /^Delete workout/ })).toHaveCount(0)
   })
 
-  test('keeps today in one dock with one Start on a narrow phone', async ({ page, cleanup }, testInfo) => {
+  test('keeps one Start on the plate and the time and rough day in the page on a narrow phone', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only dock contract')
     await page.setViewportSize({ width: 320, height: 844 })
     cleanup.add('discard active session', () => discardActiveSession(page))
@@ -91,18 +91,21 @@ test.describe('Dashboard regressions', () => {
     cleanup.add('delete next-session template', () => deleteTemplateByName(page, NEXT_SESSION_TEMPLATE_NAME))
 
     await openDashboard(page)
-    const dock = page.getByRole('region', { name: 'Today' })
+    const dock = page.getByRole('region', { name: 'Start' })
     await expect(dock).toBeVisible({ timeout: 10_000 })
-    await expect(dock.getByRole('button', { name: /^Start / })).toHaveCount(1)
+    await expect(page.getByRole('button', { name: /^Start / })).toHaveCount(1)
+    await expect(page.getByText('20 sets · plan as written')).toBeVisible()
 
-    await dock.locator('[data-today-readiness]').click()
-    await dock.getByRole('radio', { name: 'Sleep 2 of 5, Restless' }).check()
-    await expect(dock.getByText('Saved for today')).toBeVisible({ timeout: 10_000 })
+    // One tap eases the day and one tap brings it back; Start stays where it was.
+    await page.getByRole('button', { name: 'Rough day? Ease the session' }).click()
+    await expect(page.getByText(/of 20 sets · rough day/)).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('−1 set').first()).toBeVisible()
+    await page.getByRole('button', { name: 'Rough day. Undo' }).click()
+    await expect(page.getByRole('button', { name: 'Rough day? Ease the session' })).toBeVisible({ timeout: 10_000 })
     await expect(dock.getByRole('button', { name: /^Start / })).toBeVisible()
-    await dock.locator('[data-today-readiness]').click()
 
-    await dock.getByRole('radio', { name: '30 min' }).click()
-    await expect(dock.getByText(/of 20 sets/)).toBeVisible()
+    await page.getByRole('radio', { name: '30 min' }).click()
+    await expect(page.getByText(/of 20 sets/)).toBeVisible()
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth - document.documentElement.clientWidth
     ))).toBe(0)

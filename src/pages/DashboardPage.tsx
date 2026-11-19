@@ -33,7 +33,7 @@ import {
 } from '../lib/workoutService'
 import { getCappedWorkoutFinishedAt, hasRecordedDuration } from '../lib/sessionDuration'
 import { pluralize } from '../lib/pluralize'
-import { workoutTitle } from '../lib/workoutCopy'
+import { weekCountLabel, workoutTitle } from '../lib/workoutCopy'
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
@@ -182,7 +182,7 @@ export default function DashboardPage() {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const { profile } = useProfileStore()
   const units = profile?.units ?? 'kg'
-  const active = useWorkoutStore((state) => state.active)
+  const storeActive = useWorkoutStore((state) => state.active)
   const navigate = useNavigate()
   const {
     workouts: snapshotWorkouts,
@@ -239,6 +239,8 @@ export default function DashboardPage() {
     ))
     setTemplatesResource({ uid: user.uid, state: { status: 'success', data: currentTemplates } })
   })
+  // A started plan stays on screen as it was until the session page takes over.
+  const active = launchOperation?.status === 'pending' ? null : storeActive
   const [readinessResource, setReadinessResource] = useState<ReadinessResource>({
     uid: user?.uid ?? null,
     state: { status: 'loading' },
@@ -635,24 +637,19 @@ export default function DashboardPage() {
   const record = latestRecord(workouts, today.getTime())
 
   const todayControls = !hasActiveSession && todayPlan && quickTemplateDay
-  const dock = !hasActiveSession && (
-    <section className="train-dock" aria-label="Today">
-      {/* The check-in stays without a plan day too: Coach reads it. */}
-      {!hasActiveSession && (
-        <ReadinessWidget onStateChange={handleReadinessStateChange} editSaved />
-      )}
-      {todayControls && (
-        <TrainTime
-          today={todayPlan}
-          plannedSets={quickTemplateDay.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
-          budgetMin={choice.budgetMin}
-          straight={choice.straight}
-          fullSets={choice.fullSets}
-          onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)}
-          onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
-          onFullSets={(fullSets) => chooseTime(choice.budgetMin, choice.straight, fullSets)}
-        />
-      )}
+  const dock = active ? (
+    <section className="train-dock" aria-label="Active workout">
+      <button
+        type="button"
+        onClick={() => navigate('/workout/new')}
+        className="workout-set-panel-action"
+        aria-label="Return to workout"
+      >
+        Resume <span>{sessionLabel}</span> · <ElapsedSessionTimer startedAt={active.startedAt} className="tabular-nums" />
+      </button>
+    </section>
+  ) : (
+    <section className="train-dock" aria-label="Start">
       <div className="train-dock-actions">
         {plansLoading ? <Bone height="3.25rem" style={{ borderRadius: '0.9375rem' }} /> : quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
           <>
@@ -730,7 +727,7 @@ export default function DashboardPage() {
               {plansLoading
                 ? <Bone width="11rem" height="0.875rem" />
                 : active ? null : weekClosed
-                ? <p className="train-meta">{weeklyDone} of {weeklyGoal} workouts · {formatCompactVolume(weeklyVolume, units)}</p>
+                ? <p className="train-meta">{weekCountLabel(weeklyDone, weeklyGoal)} {pluralize(weeklyDone, 'workout', 'workouts')} · {formatCompactVolume(weeklyVolume, units)}</p>
                 : quickTemplate && quickTemplateDay
                 ? <p className="train-meta">{quickTemplate.name} · Day {quickTemplateDayIndex + 1} of {quickTemplate.days.length}</p>
                 : supportLine && <p className="train-meta">{supportLine}</p>}
@@ -739,6 +736,18 @@ export default function DashboardPage() {
           </motion.div>
 
           <div className="train-plan">
+            {todayControls && (
+              <TrainTime
+                today={todayPlan}
+                plannedSets={quickTemplateDay.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
+                budgetMin={choice.budgetMin}
+                straight={choice.straight}
+                fullSets={choice.fullSets}
+                onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)}
+                onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
+                onFullSets={(fullSets) => chooseTime(choice.budgetMin, choice.straight, fullSets)}
+              />
+            )}
             {record && (
               <p className="train-record">
                 {recordLine(record, today, (kg) => `${kgStringToDisplayWeight(String(kg), units)} ${units}`)}
@@ -814,20 +823,12 @@ export default function DashboardPage() {
               />
             )}
 
-            {!isDesktop && dock}
-
-            {active && (
-              <section className="train-start" role="region" aria-label="Active workout">
-                <button
-                  type="button"
-                  onClick={() => navigate('/workout/new')}
-                  className="dashboard-planned-start-primary"
-                  aria-label="Return to workout"
-                >
-                  Resume <span>{sessionLabel}</span> · <ElapsedSessionTimer startedAt={active.startedAt} className="tabular-nums" />
-                </button>
-              </section>
+            {/* Without a plan day the line has nothing to ease; the entry still loads for Coach and the plan. */}
+            {!hasActiveSession && (
+              <ReadinessWidget onStateChange={handleReadinessStateChange} rough={todayControls ? todayPlan.tone === 'low' : null} />
             )}
+
+            {!isDesktop && dock}
 
             <div className="train-links">
               <button type="button" className="train-link" onClick={() => navigate('/templates')}>Plans</button>
@@ -855,12 +856,11 @@ export default function DashboardPage() {
           </div>
 
           <div className="train-side">
-            {isDesktop && dock}
             <motion.div className="train-week" {...fadeUp(0.09)}>
               <div className="train-week-head">
                 <h2>This week</h2>
                 <span>
-                  {weeklyDone} of {weeklyGoal}
+                  {weekCountLabel(weeklyDone, weeklyGoal)}
                   {weeklyVolume > 0 && ` · ${formatCompactVolume(weeklyVolume, units)}`}
                 </span>
               </div>
@@ -884,7 +884,7 @@ export default function DashboardPage() {
                 </dl>
               </details>
             </motion.div>
-
+            {isDesktop && dock}
           </div>
         </section>
 

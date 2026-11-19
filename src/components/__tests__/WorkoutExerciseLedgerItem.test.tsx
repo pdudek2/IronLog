@@ -16,7 +16,6 @@ const callbacks = {
   onAddSet: vi.fn(),
   onApplySuggestion: vi.fn(),
   onDismissSuggestion: vi.fn(),
-  onOpenOverview: vi.fn(),
   drawnSetIndex: null,
   onRemoveExercise: vi.fn(),
   onRemoveSet: vi.fn(),
@@ -53,7 +52,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       <WorkoutExerciseLedgerItem
         exerciseClientId="exercise-1"
         exerciseIndex={0}
-        exerciseCount={3}
         fallbackExercise={null}
         panelSetIndex={1}
         hintDismissed
@@ -107,7 +105,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       <WorkoutExerciseLedgerItem
         exerciseClientId="exercise-1"
         exerciseIndex={0}
-        exerciseCount={3}
         fallbackExercise={null}
         panelSetIndex={1}
         hintDismissed
@@ -144,7 +141,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       <WorkoutExerciseLedgerItem
         exerciseClientId="exercise-1"
         exerciseIndex={0}
-        exerciseCount={3}
         fallbackExercise={null}
         panelSetIndex={0}
         hintDismissed
@@ -163,7 +159,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       <WorkoutExerciseLedgerItem
         exerciseClientId="exercise-1"
         exerciseIndex={0}
-        exerciseCount={3}
         fallbackExercise={null}
         panelSetIndex={0}
         hintDismissed
@@ -175,7 +170,8 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     )
 
     expect(screen.getByRole('button', { name: /^Edit set 1/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('Exercise 1 of 3')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'More for Bench Press' }))
+    expect(callbacks.onRemoveExercise).toHaveBeenCalledWith(0)
 
     fireEvent.click(screen.getByRole('button', { name: 'Mark set 1 for Bench Press' }))
     expect(callbacks.onToggleSet).toHaveBeenCalledWith(0, 0)
@@ -188,7 +184,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       <WorkoutExerciseLedgerItem
         exerciseClientId="exercise-1"
         exerciseIndex={0}
-        exerciseCount={3}
         fallbackExercise={null}
         panelSetIndex={0}
         hintDismissed={false}

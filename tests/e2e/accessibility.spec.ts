@@ -61,28 +61,16 @@ test.describe('Phase 3 navigation accessibility', () => {
     await expect(start).toBeFocused()
   })
 
-  test('scroll-hidden mobile navigation transfers focus and ignores direction jitter', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'mobile-only scroll navigation contract')
+  test('mobile navigation stays on screen while the page scrolls', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only navigation contract')
 
     await page.goto('/profile')
     await expectAppReady(page, '/profile')
 
-    const main = page.getByRole('main')
     const nav = page.locator('nav.bottom-nav')
-    const start = nav.locator('button[aria-label="Train"]')
-
-    await start.focus()
     await page.mouse.wheel(0, 600)
-    await expect(main).toBeFocused()
-    await expect(nav).toHaveAttribute('aria-hidden', 'true')
-    await expect.poll(() => nav.evaluate((element) => (element as HTMLElement).inert)).toBe(true)
-
-    await page.mouse.wheel(0, -8)
-    await expect(nav).toHaveAttribute('aria-hidden', 'true')
-
-    await page.mouse.wheel(0, -600)
     await expect(nav).not.toHaveAttribute('aria-hidden', 'true')
-    await expect.poll(() => nav.evaluate((element) => (element as HTMLElement).inert)).toBe(false)
+    await expect(nav).toBeInViewport()
   })
 
   test('desktop profile action communicates the current page', async ({ page }, testInfo) => {
@@ -127,15 +115,9 @@ test('primary mobile controls expose at least 44px hit areas', async ({ page }, 
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
 
-  const checkIn = page.locator('[data-today-readiness]')
-  await expect(checkIn).toBeVisible()
-  await checkIn.click()
-  const sleepStep = page.getByRole('radio', { name: 'Sleep 1 of 5, Poor' })
-  await expect(sleepStep).toBeVisible()
-
   const controls = [
     page.getByRole('button', { name: 'SHEAR — home' }),
-    sleepStep,
+    page.locator('nav.bottom-nav').getByRole('button', { name: 'History' }),
   ]
 
   for (const control of controls) {

@@ -332,7 +332,7 @@ describe('shared accessibility contracts', () => {
     expect(container.querySelector('nav[aria-label="Bottom navigation"]')).not.toHaveAttribute('aria-hidden')
   })
 
-  it('hides mobile navigation on deliberate downward scroll and restores it on upward scroll', async () => {
+  it('keeps the tab bar on screen while the page scrolls', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <MobileInteractionProvider>
@@ -342,20 +342,10 @@ describe('shared accessibility contracts', () => {
     )
 
     const nav = screen.getByRole('navigation', { name: 'Bottom navigation' })
-
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 80 })
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 400 })
     fireEvent.scroll(window)
-    await waitFor(() => expect(nav).toHaveAttribute('aria-hidden', 'true'))
-
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 70 })
-    fireEvent.scroll(window)
-    expect(nav).toHaveAttribute('aria-hidden', 'true')
-
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 30 })
-    fireEvent.scroll(window)
-    await waitFor(() => {
-      expect(nav).not.toHaveAttribute('aria-hidden', 'true')
-      expect(nav).not.toHaveAttribute('inert')
-    })
+    expect(nav).not.toHaveAttribute('aria-hidden')
+    expect(nav).not.toHaveAttribute('inert')
   })
+
 })

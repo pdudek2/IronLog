@@ -1,14 +1,16 @@
-import { StrictMode, createElement, type ReactNode } from 'react'
+import { StrictMode } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReadinessEntry } from '../../lib/readinessService'
 import ReadinessWidget from '../../components/ReadinessWidget'
+import { NORMAL_DAY, ROUGH_DAY } from '../../shared/readiness'
 
 const mocks = vi.hoisted(() => ({
   currentDate: '2026-07-12',
   currentUser: { uid: 'user-1' },
   getReadiness: vi.fn(),
-  onSaved: undefined as undefined | ((saved: ReadinessEntry) => void),
+  saveReadiness: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 vi.mock('../../store/authStore', () => {
@@ -22,34 +24,10 @@ vi.mock('../../store/authStore', () => {
 vi.mock('../../lib/readinessService', () => ({
   todayKey: () => mocks.currentDate,
   getReadiness: mocks.getReadiness,
-  computeReadinessScore: (entry: ReadinessEntry) => ({
-    score: entry.sleep,
-    tone: 'high',
-    color: 'var(--accent)',
-    label: entry.date,
-  }),
+  saveReadiness: mocks.saveReadiness,
 }))
 
-vi.mock('../../components/ReadinessPrompt', () => ({
-  default: ({ onSaved }: { onSaved: (saved: ReadinessEntry) => void }) => {
-    mocks.onSaved = onSaved
-    return <div>readiness-prompt</div>
-  },
-}))
-
-vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, {
-    get: (_target, tag: string | symbol) => {
-      if (typeof tag !== 'string') return undefined
-      return ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
-        delete props.initial
-        delete props.animate
-        delete props.transition
-        return createElement(tag, props, children)
-      }
-    },
-  }),
-}))
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -77,61 +55,111 @@ describe('ReadinessWidget data states', () => {
     mocks.currentDate = '2026-07-12'
     mocks.currentUser = { uid: 'user-1' }
     mocks.getReadiness.mockReset()
-    mocks.onSaved = undefined
+    mocks.saveReadiness.mockReset()
+    mocks.toastError.mockReset()
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   })
 
-  it('performs one initial read in StrictMode and renders the prompt only for success null', async () => {
+  it('performs one initial read in StrictMode and offers the rough day once it is known', async () => {
     const request = deferred<ReadinessEntry | null>()
     mocks.getReadiness.mockReturnValueOnce(request.promise)
 
-    render(<StrictMode><ReadinessWidget /></StrictMode>)
+    render(<StrictMode><ReadinessWidget rough={false} /></StrictMode>)
 
     await waitFor(() => expect(mocks.getReadiness).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
     await act(async () => request.resolve(null))
-    expect(await screen.findByText('readiness-prompt')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Rough day? Ease the session' })).toBeInTheDocument()
   })
 
-  it('renders a persistent error instead of the prompt and recovers through retry', async () => {
+  it('loads without a line when there is no plan day to ease', async () => {
+    const onStateChange = vi.fn()
+    mocks.getReadiness.mockResolvedValueOnce(entry('2026-07-12'))
+
+    const { container } = render(<ReadinessWidget rough={null} onStateChange={onStateChange} />)
+
+    await waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: entry('2026-07-12') }))
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('saves the rough day with one tap, and Undo saves a normal day', async () => {
+    const onStateChange = vi.fn()
+    mocks.getReadiness.mockResolvedValueOnce(null)
+    const rough = { ...entry('2026-07-12'), ...ROUGH_DAY }
+    mocks.saveReadiness.mockResolvedValueOnce(rough)
+
+    const view = render(<ReadinessWidget rough={false} onStateChange={onStateChange} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Rough day? Ease the session' }))
+
+    await waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: rough }))
+    expect(mocks.saveReadiness).toHaveBeenCalledWith('user-1', ROUGH_DAY)
+
+    const normal = { ...entry('2026-07-12'), ...NORMAL_DAY }
+    mocks.saveReadiness.mockResolvedValueOnce(normal)
+    view.rerender(<ReadinessWidget rough onStateChange={onStateChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Rough day. Undo' }))
+    await waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: normal }))
+    expect(mocks.saveReadiness).toHaveBeenLastCalledWith('user-1', NORMAL_DAY)
+  })
+
+  it('keeps the state when a save fails', async () => {
+    const onStateChange = vi.fn()
+    mocks.getReadiness.mockResolvedValueOnce(null)
+    mocks.saveReadiness.mockRejectedValueOnce(new Error('offline'))
+
+    render(<ReadinessWidget rough={false} onStateChange={onStateChange} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Rough day? Ease the session' }))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+    expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: null })
+    expect(screen.getByRole('button', { name: 'Rough day? Ease the session' })).toBeEnabled()
+  })
+
+  it('renders a persistent error and recovers through retry', async () => {
+    const onStateChange = vi.fn()
     mocks.getReadiness
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce(entry('2026-07-12'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
-    render(<ReadinessWidget />)
+    render(<ReadinessWidget rough={false} onStateChange={onStateChange} />)
 
-    expect(await screen.findByText('Could not load readiness')).toBeInTheDocument()
-    expect(screen.queryByText('readiness-prompt')).not.toBeInTheDocument()
+    expect(await screen.findByText('Could not load today’s check-in.')).toBeInTheDocument()
+    expect(consoleError).toHaveBeenCalledWith('[ReadinessWidget] load failed', expect.any(Error))
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
+    await waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: entry('2026-07-12') }))
     expect(mocks.getReadiness).toHaveBeenCalledTimes(2)
+    consoleError.mockRestore()
   })
 
   it('does not refetch on the same day and reads exactly once after the day changes', async () => {
+    const onStateChange = vi.fn()
     mocks.getReadiness.mockImplementation(
       (_uid: string, date: string) => Promise.resolve(entry(date)),
     )
 
-    render(<StrictMode><ReadinessWidget /></StrictMode>)
-    expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
+    render(<StrictMode><ReadinessWidget rough={false} onStateChange={onStateChange} /></StrictMode>)
+    await waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: entry('2026-07-12') }))
 
     act(() => document.dispatchEvent(new Event('visibilitychange')))
     expect(mocks.getReadiness).toHaveBeenCalledTimes(1)
 
     mocks.currentDate = '2026-07-13'
     act(() => document.dispatchEvent(new Event('visibilitychange')))
-    expect(await screen.findByText('2026-07-13')).toBeInTheDocument()
+    await waitFor(() => expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: entry('2026-07-13') }))
     expect(mocks.getReadiness).toHaveBeenCalledTimes(2)
     expect(mocks.getReadiness).toHaveBeenLastCalledWith('user-1', '2026-07-13')
   })
 
   it('ignores a late response from the previous day', async () => {
+    const onStateChange = vi.fn()
     const oldDay = deferred<ReadinessEntry | null>()
     const newDay = deferred<ReadinessEntry | null>()
     mocks.getReadiness
       .mockReturnValueOnce(oldDay.promise)
       .mockReturnValueOnce(newDay.promise)
 
-    render(<ReadinessWidget />)
+    render(<ReadinessWidget rough={false} onStateChange={onStateChange} />)
     await waitFor(() => expect(mocks.getReadiness).toHaveBeenCalledTimes(1))
 
     mocks.currentDate = '2026-07-13'
@@ -139,83 +167,22 @@ describe('ReadinessWidget data states', () => {
     await waitFor(() => expect(mocks.getReadiness).toHaveBeenCalledTimes(2))
 
     await act(async () => newDay.resolve(entry('2026-07-13', 5)))
-    expect(await screen.findByText('2026-07-13')).toBeInTheDocument()
     await act(async () => oldDay.resolve(entry('2026-07-12', 1)))
-    expect(screen.getByText('2026-07-13')).toBeInTheDocument()
-    expect(screen.queryByText('2026-07-12')).not.toBeInTheDocument()
-  })
-
-  it('keys a save by the saved entry date when submission crosses midnight', async () => {
-    mocks.getReadiness.mockResolvedValueOnce(null)
-
-    render(<ReadinessWidget />)
-    expect(await screen.findByText('readiness-prompt')).toBeInTheDocument()
-
-    mocks.currentDate = '2026-07-13'
-    act(() => mocks.onSaved?.(entry('2026-07-13', 5)))
-
-    expect(await screen.findByText('2026-07-13')).toBeInTheDocument()
-    act(() => document.dispatchEvent(new Event('visibilitychange')))
-    expect(mocks.getReadiness).toHaveBeenCalledTimes(1)
-  })
-
-  it('reports the current saved entry after load and after a new save', async () => {
-    const onStateChange = vi.fn()
-    mocks.getReadiness.mockResolvedValueOnce(entry('2026-07-12', 4))
-
-    const view = render(<ReadinessWidget onStateChange={onStateChange} />)
-
-    expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
-    expect(onStateChange).toHaveBeenLastCalledWith({
-      status: 'success',
-      data: entry('2026-07-12', 4),
-    })
-
-    view.unmount()
-    mocks.getReadiness.mockResolvedValueOnce(null)
-    render(<ReadinessWidget onStateChange={onStateChange} />)
-    expect(await screen.findByText('readiness-prompt')).toBeInTheDocument()
-
-    act(() => mocks.onSaved?.(entry('2026-07-12', 5)))
-    expect(onStateChange).toHaveBeenLastCalledWith({
-      status: 'success',
-      data: entry('2026-07-12', 5),
-    })
-  })
-
-  it('can replace the expanded saved state without replacing its data lifecycle', async () => {
-    mocks.getReadiness.mockResolvedValueOnce(entry('2026-07-12', 4))
-
-    render(
-      <ReadinessWidget
-        renderSaved={(saved) => <div>compact-{saved.date}</div>}
-      />,
-    )
-
-    expect(await screen.findByText('compact-2026-07-12')).toBeInTheDocument()
-    expect(screen.queryByText('today’s score')).not.toBeInTheDocument()
-    expect(mocks.getReadiness).toHaveBeenCalledTimes(1)
+    expect(onStateChange).toHaveBeenLastCalledWith({ status: 'success', data: entry('2026-07-13', 5) })
   })
 
   it('ignores a late save from the previous user', async () => {
-    mocks.getReadiness
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(entry('2026-07-12', 5, 'user-2'))
+    const onStateChange = vi.fn()
+    const save = deferred<ReadinessEntry>()
+    mocks.getReadiness.mockResolvedValue(null)
+    mocks.saveReadiness.mockReturnValueOnce(save.promise)
 
-    const view = render(<ReadinessWidget />)
-    expect(await screen.findByText('readiness-prompt')).toBeInTheDocument()
-    const lateOnSaved = mocks.onSaved
+    render(<ReadinessWidget rough={false} onStateChange={onStateChange} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Rough day? Ease the session' }))
 
     mocks.currentUser = { uid: 'user-2' }
-    act(() => lateOnSaved?.(entry('2026-07-12', 1, 'user-1')))
-    expect(screen.getByText('readiness-prompt')).toBeInTheDocument()
-
-    view.rerender(<ReadinessWidget />)
-    expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
-
-    expect(screen.getByText('2026-07-12')).toBeInTheDocument()
-    expect(screen.getByText('5')).toBeInTheDocument()
-    expect(screen.queryByText('1')).not.toBeInTheDocument()
+    await act(async () => save.resolve({ ...entry('2026-07-12'), ...ROUGH_DAY }))
+    expect(onStateChange).not.toHaveBeenCalledWith({ status: 'success', data: expect.objectContaining(ROUGH_DAY) })
   })
 
   it('does not log a load rejection after unmount', async () => {
@@ -223,25 +190,11 @@ describe('ReadinessWidget data states', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     mocks.getReadiness.mockReturnValueOnce(request.promise)
 
-    const { unmount } = render(<ReadinessWidget />)
+    const { unmount } = render(<ReadinessWidget rough={false} />)
     unmount()
     await act(async () => request.reject(new Error('offline')))
 
     expect(consoleError).not.toHaveBeenCalled()
-    consoleError.mockRestore()
-  })
-
-  it('logs the current load rejection', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mocks.getReadiness.mockRejectedValueOnce(new Error('offline'))
-
-    render(<ReadinessWidget />)
-
-    expect(await screen.findByText('Could not load readiness')).toBeInTheDocument()
-    expect(consoleError).toHaveBeenCalledWith(
-      '[ReadinessWidget] load failed',
-      expect.any(Error),
-    )
     consoleError.mockRestore()
   })
 })

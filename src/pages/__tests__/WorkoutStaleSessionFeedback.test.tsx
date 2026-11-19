@@ -256,7 +256,7 @@ describe('WorkoutPage stale-session feedback', () => {
     )
 
     expect(screen.getByText('Your workout keeps running')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Minimize workout' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Train' }))
 
     expect(screen.getByText('Dashboard route')).toBeInTheDocument()
     expect(mocks.active).toEqual(session)
@@ -276,7 +276,7 @@ describe('WorkoutPage stale-session feedback', () => {
 
     renderStaleSessionPage()
 
-    expect(screen.getByRole('button', { name: 'Minimize workout' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Back to Train' })).toBeDisabled()
   })
 
   it('presents authoritative absence as a direct new-workout entry', () => {
@@ -889,7 +889,7 @@ describe('WorkoutPage exercise removal identity', () => {
       renderStaleSessionPage()
       fireEvent.click(screen.getByRole('button', { name: /^y/ }))
       fireEvent.click(await screen.findByRole('button', { name: 'Remove exercise y' }))
-      await screen.findByRole('dialog', { name: 'Remove exercise?' })
+      await screen.findByRole('dialog', { name: 'Remove y?' })
       mocks.active = {
         ...mocks.active!,
         sessionId: change === 'session replaced' ? 'replacement' : 'original',

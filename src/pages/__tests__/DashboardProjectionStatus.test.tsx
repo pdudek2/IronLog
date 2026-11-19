@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   preloadRouteByPath: vi.fn(),
   requestTemplateLaunch: vi.fn(),
+  launchOperation: null as null | object,
   targetUnavailable: null as null | ((target: {
     template: { id: string }
     dayIndex: number
@@ -71,7 +72,7 @@ vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
     mocks.targetUnavailable = onTargetUnavailable ?? null
     return ({
       pendingLaunch: null,
-      launchOperation: null,
+      launchOperation: mocks.launchOperation,
       launchingTemplateId: null,
       requestTemplateLaunch: mocks.requestTemplateLaunch,
       confirmTemplateLaunch: vi.fn(),
@@ -192,6 +193,7 @@ describe('Dashboard workout projection status', () => {
     mocks.preloadRouteByPath.mockReset()
     mocks.preloadRouteByPath.mockResolvedValue(undefined)
     mocks.requestTemplateLaunch.mockReset()
+    mocks.launchOperation = null
     mocks.targetUnavailable = null
     mocks.reportedReadinessEntry = null
     mocks.readinessEntry = null
@@ -944,7 +946,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const dock = await screen.findByRole('region', { name: 'Today' })
+    const dock = await screen.findByRole('region', { name: 'Start' })
     const starts = screen.getAllByRole('button', { name: /^Start / })
     expect(starts).toHaveLength(1)
     fireEvent.click(within(dock).getByRole('button', { name: 'Start Upper A' }))
@@ -955,6 +957,24 @@ describe('Dashboard workout projection status', () => {
       'dashboard:template-1:selection:0',
       { items: expect.any(Array) },
     )
+  })
+
+  it('keeps Train as it was while a started plan hands over to the session page', async () => {
+    const template = {
+      id: 'template-1', userId: 'user-1', name: 'Upper / Lower', createdAt: 1, updatedAt: 2,
+      days: [{ name: 'Upper A', exercises: [{ exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 4, targetReps: 8, targetWeight: 70 }] }],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValue([template])
+    mocks.launchOperation = { target: { template, dayIndex: 0, requestKey: 'dashboard:template-1:selection:0' }, replaceExisting: false, status: 'pending', errorMessage: null }
+
+    render(<DashboardPage />)
+    await screen.findByRole('button', { name: 'Starting…' })
+    act(() => useWorkoutStore.getState().hydrateFromDoc({ sessionId: 'started', startedAt: Date.now(), exercises: [] }))
+
+    expect(screen.getByRole('button', { name: 'Starting…' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Return to workout' })).not.toBeInTheDocument()
+    expect(screen.getByText('Bench Press')).toBeInTheDocument()
   })
 
   it('ignores a template failure that arrives after unmount, including its side effects', async () => {

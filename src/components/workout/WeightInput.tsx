@@ -1,4 +1,5 @@
 import { useState, type InputHTMLAttributes } from 'react'
+import { selectOnRetap } from './sessionHelpers'
 import { acceptSetInput } from '../../shared/setInput'
 import type { WeightUnits } from '../../shared/weightUnits'
 
@@ -22,6 +23,7 @@ export default function WeightInput({ value, units, onValueChange, onBlur, ...pr
 
   return (
     <input
+      {...selectOnRetap}
       {...props}
       type="text"
       role="spinbutton"

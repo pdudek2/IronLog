@@ -66,13 +66,14 @@ export function nextGroupMember(exercises: FlowExercise[], exerciseIndex: number
   return next
 }
 export type SessionBlock = { kind: 'single'; index: number } | { kind: 'group'; group: string; indices: number[] }
-// The session list in plan order: consecutive exercises of one pair or circuit form one block.
+// The session list in plan order: a pair or circuit is one block where its first member stands, even when a cut left
+// another exercise between its members.
 export function sessionBlocks(exercises: readonly { group?: unknown; sets: unknown }[]): SessionBlock[] {
   const blocks: SessionBlock[] = []
   exercises.forEach((exercise, index) => {
     const group = typeof exercise.group === 'string' && exercise.group ? exercise.group : undefined
-    const last = blocks.at(-1)
-    if (group && last?.kind === 'group' && last.group === group) last.indices.push(index)
+    const open = group ? blocks.find((block) => block.kind === 'group' && block.group === group) : undefined
+    if (open?.kind === 'group') open.indices.push(index)
     else blocks.push(group ? { kind: 'group', group, indices: [index] } : { kind: 'single', index })
   })
   return blocks.map((block) => block.kind === 'group' && block.indices.length === 1 ? { kind: 'single', index: block.indices[0]! } : block)

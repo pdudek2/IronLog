@@ -1363,7 +1363,7 @@ const styles = StyleSheet.create({
   upNextName: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.5 },
   upNextTarget: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },
   setRowCurrent: { backgroundColor: 'rgba(244, 238, 232, 0.1)', borderRadius: 11 },
-  sessionTop: { paddingHorizontal: 16, paddingTop: 10 },
+  sessionTop: { paddingHorizontal: 16 },
   band: { height: 176, left: 0, position: 'absolute', right: 0, top: -64 },
   bandImage: { height: '100%', opacity: 0.7, resizeMode: 'cover', width: '100%' },
   bandFade: { ...StyleSheet.absoluteFill, experimental_backgroundImage: `linear-gradient(180deg, ${colors.background}8c, ${colors.background})` },

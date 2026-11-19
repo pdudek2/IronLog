@@ -78,6 +78,8 @@ describe('session flow', () => {
     const list = [exercise(0, 4), exercise(0, 3), exercise(0, 2, 'g1'), exercise(0, 3, 'g1'), exercise(0, 1, 'g2')]
     expect(sessionBlocks(list)).toEqual([{ kind: 'single', index: 0 }, { kind: 'single', index: 1 }, { kind: 'group', group: 'g1', indices: [2, 3] }, { kind: 'single', index: 4 }])
     expect(roundRows(list, [2, 3]).map(({ member, setIndex }) => `${member}:${setIndex}`)).toEqual(['2:0', '3:0', '2:1', '3:1', '3:2'])
+    // A cut can leave another exercise between the members; the block keeps the pair together.
+    expect(sessionBlocks([exercise(0, 2), exercise(0, 2, 'g1'), exercise(0, 2), exercise(0, 2, 'g1')])).toEqual([{ kind: 'single', index: 0 }, { kind: 'group', group: 'g1', indices: [1, 3] }, { kind: 'single', index: 2 }])
   })
 
   it('rests by role, not after a set that leaves its round open, and by the group after a round', () => {

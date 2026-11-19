@@ -645,7 +645,8 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
         const members = block.indices.map((index) => session.exercises[index]!)
         const rounds = Math.max(...members.map((member) => member.sets.length))
         const doneRounds = Math.min(...members.map((member) => member.sets.filter((set) => set.done).length))
-        const next = block.indices.find((index) => session.exercises[index]!.sets.some((set) => !set.done)) ?? block.indices[0]!
+        // The first open set in the order the round runs: 1B before 2A.
+        const next = roundRows(session.exercises, block.indices).find(({ member, setIndex }) => !session.exercises[member]!.sets[setIndex]!.done)?.member ?? block.indices[0]!
         const kind = members.length === 2 ? 'Superset' : 'Circuit'
         return <Pressable key={block.group} accessibilityRole="button" accessibilityLabel={`${kind}: ${members.map((member) => member.name).join(' and ')}. Open`} onPress={() => onGoTo(exerciseIdentity(session.exercises[next]!, next))}
           style={({ pressed }) => [styles.listRow, pressed && styles.headingPressed]}>

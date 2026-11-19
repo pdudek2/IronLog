@@ -848,7 +848,7 @@ export default function WorkoutPage() {
           onAddTime={handleAddRestTime}
           onSkip={handleSkipRest}
           variant={isDesktop ? 'full' : mobileRestVariant}
-          next={panelTitle}
+          next={panelSet ? panelTitle : nextExerciseIndex >= 0 ? active.exercises[nextExerciseIndex]?.name ?? 'the next exercise' : 'Finish'}
         />
       ) : null}
       onAdjustSet={handleAdjustSet}

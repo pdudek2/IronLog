@@ -259,7 +259,7 @@ export default function DashboardScreen() {
           <Text style={styles.muted}>{cacheEmpty ? 'Could not confirm your saved workouts. This device has no copy to check offline.' : 'Showing data saved on this device.'}</Text>
           <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>
         </View>}
-        {!weekClosed && today && chosen && <View accessibilityLabel="Today" style={styles.today}>
+        {today && chosen && <View accessibilityLabel="Today" style={styles.today}>
           <TrainTime today={today} plannedSets={chosen.day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
             budgetMin={choice.budgetMin} straight={choice.straight} fullSets={choice.fullSets}
             onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)} onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
@@ -284,7 +284,8 @@ export default function DashboardScreen() {
           {canOfferStart && templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
         </View>
         {/* Without a plan day the line has nothing to ease. */}
-        {!weekClosed && today && chosen && readiness && <RoughDay state={readiness.state} controller={readiness.controller} rough={today.tone === 'low'} />}
+        {/* Easing the day overrides Full sets, which would otherwise keep every planned set. */}
+        {today && chosen && readiness && <RoughDay state={readiness.state} controller={readiness.controller} rough={today.tone === 'low'} onEase={() => { if (choice.fullSets) chooseTime(choice.budgetMin, choice.straight, false) }} />}
         {trainLinks}
         {canOfferStart && <View>
             {launchState === 'loading' && <Text style={styles.planEmptyCopy}>Checking workout start…</Text>}

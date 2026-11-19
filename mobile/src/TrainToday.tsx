@@ -13,7 +13,7 @@ const ROUGH: ReadinessValues = { ...ROUGH_DAY }
 const NORMAL: ReadinessValues = { ...NORMAL_DAY }
 
 // A quiet line under the plan instead of a survey: one tap takes a set off each exercise, one tap brings it back.
-export function RoughDay({ state, controller, rough }: { state: ReadinessState; controller: ReadinessController; rough: boolean }) {
+export function RoughDay({ state, controller, rough, onEase }: { state: ReadinessState; controller: ReadinessController; rough: boolean; onEase: () => void }) {
   if (state.status === 'loading') return null
   if (state.status !== 'ready') return <View accessibilityRole="alert" style={styles.rough}>
     <Text style={styles.roughSoft}>{state.message ?? 'Could not load today’s check-in.'}</Text>
@@ -22,7 +22,7 @@ export function RoughDay({ state, controller, rough }: { state: ReadinessState; 
   const busy = state.busy
   return <View style={styles.rough}>
     <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy }} accessibilityLabel={rough ? 'Rough day. Undo' : 'Rough day? Ease the session'}
-      onPress={() => void controller.choose(rough ? NORMAL : ROUGH)} style={({ pressed }) => [styles.roughButton, pressed && styles.pressed]}>
+      onPress={() => { if (!rough) onEase(); void controller.choose(rough ? NORMAL : ROUGH) }} style={({ pressed }) => [styles.roughButton, pressed && styles.pressed]}>
       <Text style={styles.roughSoft}>{rough ? 'Rough day · ' : 'Rough day? '}<Text style={styles.roughAction}>{busy ? 'Saving…' : rough ? 'Undo' : 'Ease the session'}</Text></Text>
       {!rough && !busy && <Icon name="chevron-right" size={14} color={colors.text} />}
     </Pressable>
@@ -58,7 +58,7 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, o
       ? <Text accessibilityLiveRegion="polite" style={styles.todayLine}><Text style={styles.todayStrong}>Doesn’t fit in {budgetMin} min.</Text> The shortest version takes {approx}{minutes(compression.estimateSec)} min.</Text>
       : today.record ? <Text style={styles.todayLine}><Text style={styles.todayStrong}>{approx}{minutes(compression.estimateSec)} min</Text> · {kept} of {plannedSets} sets · {today.tone === 'low' && !fullSets ? 'rough day' : weights}</Text>
         : <Text style={styles.todayLine}><Text style={styles.todayStrong}>{approx}{usual} min</Text> · {plannedSets} sets · plan as written</Text>}
-    {today.breakDays !== null && <Pressable accessibilityRole="switch" accessibilityState={{ checked: fullSets }} accessibilityLabel="Full sets" onPress={() => onFullSets(!fullSets)} style={styles.switchRow}>
+    {today.breakDays !== null && today.tone !== 'low' && <Pressable accessibilityRole="switch" accessibilityState={{ checked: fullSets }} accessibilityLabel="Full sets" onPress={() => onFullSets(!fullSets)} style={styles.switchRow}>
       <Text style={styles.switchText}>Full sets</Text>
       <View style={[styles.track, fullSets && styles.trackOn]}><View style={[styles.thumb, fullSets && styles.thumbOn]} /></View>
     </Pressable>}

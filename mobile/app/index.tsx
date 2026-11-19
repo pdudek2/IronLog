@@ -262,7 +262,13 @@ function Elapsed({ session }: { session: ActiveWorkout }) {
 }
 
 // Under the header: the time the rest takes and the one way into Short on time.
-function TimeLine({ session, now, onOpen }: { session: ActiveWorkout; now: number; onOpen: () => void }) {
+function TimeLine({ session, onOpen }: { session: ActiveWorkout; onOpen: () => void }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 15_000)
+    const lifecycle = AppState.addEventListener('change', (state) => { if (state === 'active') setNow(Date.now()) })
+    return () => { clearInterval(interval); lifecycle.remove() }
+  }, [])
   const base = planCut(session, { leftMin: null, clock: false, straight: false }, now)
   const left = Math.round(base.result.fullEstimateSec / 60)
   if (base.openBefore === 0) return null
@@ -405,6 +411,29 @@ function MoreButton({ label, onPress }: { label: string; onPress: () => void }) 
   </Pressable>
 }
 
+// The progression suggestion for the exercise on screen, with Apply; a pair shows it for its current member.
+function ProgressionHint({ history, exercise, metadata, target, lowReadiness, units, editing }: {
+  history: HistoryRead; exercise: WorkoutExercise; metadata: ExerciseMetadata | undefined; target: ProgressionInput['target'] | undefined; lowReadiness: boolean; units: Units; editing: EditingActions
+}) {
+  // A trial announces itself and then proposes a weight; closing one must not hide the next.
+  const [closedHint, setClosedHint] = useState<string | null>(null)
+  const progression = history.state.status === 'ready' && target !== undefined ? buildProgression({
+    sessions: history.state.data.sessions, target, equipment: metadata?.equipment, category: metadata?.category, units, lowReadiness, now: Date.now(),
+  }) : null
+  const hint = sessionHint(progression, exercise.sets, units, metadata?.equipment)
+  const suggestion = hint && hint.label !== closedHint ? hint : null
+  return <>
+      {suggestion && <View style={styles.hint}>
+        <Text style={styles.hintText}>{suggestion.label}</Text>
+        {(suggestion.weight !== undefined || suggestion.reps !== undefined) && <Pressable accessibilityRole="button" hitSlop={{ top: 4, bottom: 4 }}
+          onPress={() => { editing.applyOverload(exercise.clientId, { weight: suggestion.weight, reps: suggestion.reps }); setClosedHint(suggestion.label) }}
+          style={({ pressed }) => [styles.hintApply, pressed && styles.headingPressed]}><Text style={styles.hintApplyText}>Apply</Text></Pressable>}
+        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setClosedHint(suggestion.label)}
+          style={({ pressed }) => [styles.hintClose, pressed && styles.headingPressed]}><Icon name="close" size={16} /></Pressable>
+      </View>}
+  </>
+}
+
 function ExerciseLedger({ history, exercise, units, metadata, target, lowReadiness, panelSet, onSelectSet, onRemove, drawnSetId, editing }: {
   history: HistoryRead; exercise: WorkoutExercise
   // undefined while the session's plan is still loading
@@ -413,13 +442,6 @@ function ExerciseLedger({ history, exercise, units, metadata, target, lowReadine
 }) {
   const category = metadata ? EXERCISE_CATEGORY_LABELS[metadata.category] : undefined
   const equipment = metadata ? EQUIPMENT_LABELS[metadata.equipment] : undefined
-  // A trial announces itself and then proposes a weight; closing one must not hide the next.
-  const [closedHint, setClosedHint] = useState<string | null>(null)
-  const progression = history.state.status === 'ready' && target !== undefined ? buildProgression({
-    sessions: history.state.data.sessions, target, equipment: metadata?.equipment, category: metadata?.category, units, lowReadiness, now: Date.now(),
-  }) : null
-  const hint = sessionHint(progression, exercise.sets, units, metadata?.equipment)
-  const suggestion = hint && hint.label !== closedHint ? hint : null
   return <View style={styles.exerciseCard}>
     <View style={styles.exerciseHeadRow}>
       <View style={styles.exerciseHeading}>
@@ -432,14 +454,7 @@ function ExerciseLedger({ history, exercise, units, metadata, target, lowReadine
       <MoreButton label={`More for ${exercise.name}`} onPress={onRemove} />
     </View>
     <View>
-      {suggestion && <View style={styles.hint}>
-        <Text style={styles.hintText}>{suggestion.label}</Text>
-        {(suggestion.weight !== undefined || suggestion.reps !== undefined) && <Pressable accessibilityRole="button" hitSlop={{ top: 4, bottom: 4 }}
-          onPress={() => { editing.applyOverload(exercise.clientId, { weight: suggestion.weight, reps: suggestion.reps }); setClosedHint(suggestion.label) }}
-          style={({ pressed }) => [styles.hintApply, pressed && styles.headingPressed]}><Text style={styles.hintApplyText}>Apply</Text></Pressable>}
-        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setClosedHint(suggestion.label)}
-          style={({ pressed }) => [styles.hintClose, pressed && styles.headingPressed]}><Icon name="close" size={16} /></Pressable>
-      </View>}
+      <ProgressionHint history={history} exercise={exercise} metadata={metadata} target={target} lowReadiness={lowReadiness} units={units} editing={editing} />
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.setGrid, styles.setHeaderGrid]}>
         <Text style={[styles.setHeaderCell, styles.setToggleColumn, styles.setHeaderCentered]}>Set</Text>
         <Text style={[styles.setHeaderCell, styles.setValue]}>Last</Text>
@@ -501,9 +516,10 @@ function CollapsedExercise({ exercise, units, onPress }: { exercise: WorkoutExer
 
 const MEMBER_LETTERS = 'ABCDEF'
 // A pair or circuit as one block: its members once, then every set in the order it is done, round by round.
-function GroupBlock({ uid, session, indices, currentIndex, panelSet, units, editing, drawnSetId, onSelect, onRemove, sessionKey }: {
+function GroupBlock({ uid, session, indices, currentIndex, panelSet, units, editing, drawnSetId, onSelect, onRemove, sessionKey, hint, onCurrentRow }: {
   uid: string; session: ActiveWorkout; indices: number[]; currentIndex: number; panelSet: number; units: Units; editing: EditingActions; drawnSetId: string | null
   onSelect: (exerciseId: string, setId: string) => void; onRemove: (exercise: WorkoutExercise) => void; sessionKey: string
+  hint: React.ReactNode; onCurrentRow: (event: LayoutChangeEvent) => void
 }) {
   const members = indices.map((index) => session.exercises[index]!)
   const loadHistory = useCallback(async () => {
@@ -531,6 +547,7 @@ function GroupBlock({ uid, session, indices, currentIndex, panelSet, units, edit
         <MoreButton label={`More for ${member.name}`} onPress={() => onRemove(member)} />
       </View>
     })}
+    {hint}
     <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.setGrid, styles.setHeaderGrid]}>
       <Text style={[styles.setHeaderCell, styles.setToggleColumn, styles.setHeaderCentered]}>Set</Text>
       <Text style={[styles.setHeaderCell, styles.setValue]}>Last</Text>
@@ -553,7 +570,11 @@ function GroupBlock({ uid, session, indices, currentIndex, panelSet, units, edit
             <Text numberOfLines={1} style={[styles.setCellMuted, styles.setValue]}>{previous}</Text>
             <Text numberOfLines={1} style={[styles.setToday, styles.setValue, set.done && styles.setTodayDone, current && styles.setTodayCurrent]}>{setPairLabel(set, units)}</Text>
           </View>
-          <View style={[styles.setTrailingColumn, styles.setTouchTarget]}>{set.done && <SetTick draw={drawnSetId === set.clientId} />}</View>
+          {set.done ? <Pressable accessibilityRole="button" accessibilityLabel={`Unmark set ${label} for ${exercise.name}`} onPress={() => editing.setDone(exercise.clientId, set.clientId, false)}
+            style={[styles.setTrailingColumn, styles.setTouchTarget]}><SetTick draw={drawnSetId === set.clientId} /></Pressable>
+            : <View style={[styles.setTrailingColumn, styles.setTouchTarget]} />}
+          {/* Mounts again whenever another row becomes current, so the list can bring it into view. */}
+          {current && <View key={set.clientId} onLayout={onCurrentRow} style={styles.rowMarker} />}
         </Pressable>
         {roundEnd && rest > 0 && <View style={styles.roundRest}><Text style={styles.roundRestText}>rest {Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}</Text><View style={styles.roundRestRule} /></View>}
       </View>
@@ -572,9 +593,9 @@ function currentExerciseIndex(session: ActiveWorkout, manual: string | null) {
   return picked >= 0 ? picked : focusExerciseIndex(session.exercises)
 }
 
-function WorkoutLedger({ uid, session, units, sessionKey, history, editing, currentIndex, panelSet, onGoTo, onSelectSet, onSelectMemberSet, onCurrentLayout, onRemoveExercise, picking, onPicking, drawnSetId }: {
+function WorkoutLedger({ uid, session, units, sessionKey, history, editing, currentIndex, panelSet, onGoTo, onSelectSet, onSelectMemberSet, onCurrentLayout, onCurrentRow, onRemoveExercise, picking, onPicking, drawnSetId }: {
   uid: string; session: ActiveWorkout; units: Units; sessionKey: string; history: HistoryRead; editing: EditingActions; currentIndex: number; panelSet: number
-  onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onSelectMemberSet: (exerciseId: string, setId: string) => void; onCurrentLayout: (event: LayoutChangeEvent) => void
+  onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onSelectMemberSet: (exerciseId: string, setId: string) => void; onCurrentLayout: (event: LayoutChangeEvent) => void; onCurrentRow: (event: LayoutChangeEvent) => void
   onRemoveExercise: (exercise: WorkoutExercise) => void; picking: boolean; onPicking: (picking: boolean) => void; drawnSetId: string | null
 }) {
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
@@ -657,7 +678,9 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
       }
       if (block.kind === 'group') return <View key={block.group} onLayout={onCurrentLayout}>
         <GroupBlock uid={uid} session={session} indices={block.indices} currentIndex={currentIndex} panelSet={panelSet} units={units} editing={editing}
-          drawnSetId={drawnSetId} onSelect={onSelectMemberSet} onRemove={onRemoveExercise} sessionKey={sessionKey} /></View>
+          drawnSetId={drawnSetId} onSelect={onSelectMemberSet} onRemove={onRemoveExercise} sessionKey={sessionKey} onCurrentRow={onCurrentRow}
+          hint={block.indices.includes(currentIndex) && session.exercises[currentIndex] ? <ProgressionHint key={session.exercises[currentIndex]!.clientId} history={history} exercise={session.exercises[currentIndex]!}
+            metadata={metadataOf(session.exercises[currentIndex]!)} target={targetOf(session.exercises[currentIndex]!)} lowReadiness={lowReadiness} units={units} editing={editing} /> : null} /></View>
       const exercise = session.exercises[block.index]!
       const id = exerciseIdentity(exercise, block.index)
       return block.index === currentIndex
@@ -797,6 +820,8 @@ function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => 
 function SessionScreen({ user }: { user: AuthUser }) {
   const scroll = useRef<ScrollView>(null)
   const pendingScroll = useRef(false)
+  const scrollY = useRef(0)
+  const viewportHeight = useRef(0)
   const isFocused = useIsFocused()
   const router = useRouter()
   const active = useActiveRuntime()
@@ -940,6 +965,16 @@ function SessionScreen({ user }: { user: AuthUser }) {
     setManualExercise({ sessionId: liveSession.sessionId, id: exerciseId })
     setSelectedSet({ exerciseId, setId })
   }
+  // In a pair the highlight walks down the rows; keep the current one between the header and the set panel.
+  const revealRow = (event: LayoutChangeEvent) => {
+    const inner = scroll.current?.getInnerViewNode()
+    if (!inner) return
+    ;(event.currentTarget as unknown as View).measureLayout(inner, (_x, y, _w, height) => {
+      const top = scrollY.current + 130
+      const bottom = scrollY.current + viewportHeight.current - 260
+      if (y < top || y + height > bottom) scroll.current?.scrollTo({ y: Math.max(0, y - 200), animated: true })
+    })
+  }
   // A newly opened exercise is brought just under the header.
   const scrollToCurrent = (event: LayoutChangeEvent) => {
     if (!pendingScroll.current) return
@@ -1042,7 +1077,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
         keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={[0]}
         scrollEventThrottle={16}
-        
+        onScroll={(event) => { scrollY.current = event.nativeEvent.contentOffset.y }}
+        onLayout={(event) => { viewportHeight.current = event.nativeEvent.layout.height }}
       >
       {state.status === 'ready' && !sessionClosed && !resumePrompt ? (
         <View style={styles.lifecycleBar}>
@@ -1156,11 +1192,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
           {state.session.exercises.length > 0 && <View style={styles.sessionTop}>
             <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.progressTrack}><View style={[styles.progressFill, { width: `${sessionSetCount.total ? sessionSetCount.done / sessionSetCount.total * 100 : 0}%` }]} /></View>
-            <TimeLine session={state.session} now={Date.now()} onOpen={() => setCutOpen(true)} />
+            <TimeLine session={state.session} onOpen={() => setCutOpen(true)} />
           </View>}
           <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' && !state.stale ? 'Saved on device' : ''}</Text>
           <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} sessionKey={sessionKey} history={history} currentIndex={panelIndex} panelSet={currentSetIndex}
-            onGoTo={goToExercise} onSelectSet={selectSet} onSelectMemberSet={selectMemberSet} onCurrentLayout={scrollToCurrent} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} />
+            onGoTo={goToExercise} onSelectSet={selectSet} onSelectMemberSet={selectMemberSet} onCurrentLayout={scrollToCurrent} onCurrentRow={revealRow} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} />
         </View>
         </>)}
       </ScrollView>
@@ -1253,6 +1289,7 @@ const styles = StyleSheet.create({
   groupMemberName: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 16 },
   groupDone: { color: colors.mutedSoft },
   groupCut: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, paddingTop: 6, paddingLeft: 8 },
+  rowMarker: { bottom: 0, left: 0, position: 'absolute', top: 0, width: 1 },
   roundRest: { alignItems: 'center', flexDirection: 'row', gap: 8, height: 22, paddingLeft: 44 },
   roundRestText: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, fontVariant: ['tabular-nums'] },
   roundRestRule: { backgroundColor: colors.line, flex: 1, height: StyleSheet.hairlineWidth },

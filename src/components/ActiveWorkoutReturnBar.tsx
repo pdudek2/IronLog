@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 
@@ -30,6 +30,7 @@ export default function ActiveWorkoutReturnBar() {
   const location = useLocation()
   const navigate = useNavigate()
   const [now, setNow] = useState(() => Date.now())
+  const id = useId()
 
   useEffect(() => {
     if (!rest) return
@@ -50,9 +51,11 @@ export default function ActiveWorkoutReturnBar() {
   return (
     <section className="active-workout-return-bar" role="region" aria-label="Active workout">
       {rest && leftMs > 0 && <i className="active-workout-return-rest" aria-hidden="true" style={{ width: `${(leftMs / (rest.totalSec * 1000)) * 100}%` }} />}
-      <button type="button" onClick={() => navigate('/workout/new')} aria-label="Return to workout">
-        <span className="active-workout-return-name" title={active.label ?? undefined}>{active.label?.trim() || 'Workout'}</span>
-        <span className="active-workout-return-time">
+      {/* Named from its own text when read, so the ticking clock needs no live region. */}
+      <button type="button" onClick={() => navigate('/workout/new')} aria-labelledby={`${id}-action ${id}-name ${id}-time`}>
+        <span id={`${id}-action`} className="sr-only">Return to workout,</span>
+        <span id={`${id}-name`} className="active-workout-return-name" title={active.label ?? undefined}>{active.label?.trim() || 'Workout'}</span>
+        <span id={`${id}-time`} className="active-workout-return-time">
           <ElapsedSessionTimer startedAt={active.startedAt} />
           {leftMs > 0 && ` · rest ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}
         </span>

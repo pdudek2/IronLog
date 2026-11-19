@@ -9990,11 +9990,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   box-shadow: none;
 }
 
-.train-dock .workout-set-panel-action:not([data-quiet]),
-.workout-focus-shell:not(.landing-demo) .workout-set-panel .workout-set-panel-action:not([data-quiet]) {
-  background: var(--puls-bone);
-}
-
 .train-dock .workout-set-panel-action span {
   font-weight: 400;
 }

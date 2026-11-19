@@ -38,6 +38,9 @@ export function isBlockingRequestFailure(
     && /^http:\/\/127\.0\.0\.1:8080\/google\.firestore\.v1\.Firestore\/(?:Listen|Write)\/channel\?/.test(url)
   const isLocalViteSourceModule = resourceType === 'script'
     && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/src\/.+\.[cm]?[jt]sx?(?:\?.*)?$/.test(url)
+  // A dependency of a lazy page that a hover preloaded is cut off by the next navigation like its page module.
+  const isLocalViteDependency = resourceType === 'script'
+    && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/node_modules\/\.vite\/deps\/[A-Za-z0-9_.-]+\.js(?:\?.*)?$/.test(url)
   const isLocalViteProductionChunk = resourceType === 'script'
     && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.js(?:\?.*)?$/.test(url)
   const isTrustedGoogleFont = resourceType === 'font'
@@ -54,6 +57,7 @@ export function isBlockingRequestFailure(
     && (
       isEmulatorFirestoreChannel
       || isLocalViteSourceModule
+      || isLocalViteDependency
       || isLocalViteProductionChunk
       || isTrustedGoogleFont
       || isLocalCover

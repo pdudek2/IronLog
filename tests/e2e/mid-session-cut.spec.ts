@@ -76,6 +76,8 @@ test.describe('Short on time mid-session', () => {
       await expect.poll(async () => (await db.doc(`workouts/cut-${uid}`).get()).data()?.compression?.cut?.leftMin, { timeout: 20_000 }).toBe(15)
       const workout = (await db.doc(`workouts/cut-${uid}`).get()).data()!
       expect(workout.exercises.map((exercise: { exerciseId: string }) => exercise.exerciseId)).not.toContain('seated-cable-row')
+      // The summary loads its chart; ending the test before it would abort that request.
+      await expect(page.getByText('Workout saved')).toBeVisible()
     } finally {
       await deleteApp(app)
     }

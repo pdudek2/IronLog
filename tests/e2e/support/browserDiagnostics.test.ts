@@ -54,6 +54,10 @@ describe('browser diagnostics classification', () => {
     expect(isBlockingRequestFailure('script', 'net::ERR_FAILED', viteModuleUrl, true)).toBe(true)
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'http://localhost:5174/assets/app.js', true)).toBe(true)
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'https://example.com/src/app.ts', true)).toBe(true)
+    // A pre-bundled dependency of a hover-preloaded page follows the same rule.
+    const dependency = 'http://localhost:5174/node_modules/.vite/deps/recharts.js?v=7ef30e99'
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', dependency, true)).toBe(false)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', dependency, false)).toBe(true)
   })
 
   it('ignores aborted local hashed production chunks only during intentional navigation or teardown', () => {

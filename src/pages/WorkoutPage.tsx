@@ -228,7 +228,7 @@ export default function WorkoutPage() {
     && pendingFinish.uid === user?.uid
     && pendingFinish.sessionId === active?.sessionId
   if (pendingFinish && !pendingFinishMatches) setPendingFinish(null)
-  const [pendingExerciseRemoval, setPendingExerciseRemoval] = useState<{ sessionId: string; exerciseClientId: string } | null>(null)
+  const [pendingExerciseRemoval, setPendingExerciseRemoval] = useState<{ sessionId: string; exerciseClientId: string; sets: string } | null>(null)
   const [pendingSetRemoval, setPendingSetRemoval] = useState<PendingSetRemoval | null>(null)
   const {
     state: userExercisesState,
@@ -557,7 +557,7 @@ export default function WorkoutPage() {
       toast.error('Could not prepare to safely remove this exercise. Refresh the view and try again.')
       return
     }
-    setPendingExerciseRemoval({ sessionId: currentActive.sessionId, exerciseClientId: exercise.clientId })
+    setPendingExerciseRemoval({ sessionId: currentActive.sessionId, exerciseClientId: exercise.clientId, sets: JSON.stringify(exercise.sets) })
   }, [])
 
   function handleConfirmRemoveExercise() {
@@ -566,7 +566,9 @@ export default function WorkoutPage() {
     const index = currentActive?.sessionId === pendingExerciseRemoval.sessionId
       ? currentActive.exercises.findIndex((exercise) => exercise.clientId === pendingExerciseRemoval.exerciseClientId)
       : -1
-    if (index >= 0) removeExercise(index)
+    // Sets that changed while the dialog was open came from another device: the user confirmed a different exercise.
+    if (index >= 0 && JSON.stringify(currentActive!.exercises[index]!.sets) !== pendingExerciseRemoval.sets) toast.error('This exercise changed on another device. Check it and remove it again if you still want to.')
+    else if (index >= 0) removeExercise(index)
     setPendingExerciseRemoval(null)
   }
 

@@ -709,8 +709,8 @@ function SetStepper({ label, step, onStep }: { label: string; step: number; onSt
     style={({ pressed }) => [styles.panelStep, pressed && styles.setStepperPressed]}><Text style={styles.panelStepText}>{step > 0 ? `+${step}` : `−${-step}`}</Text></Pressable>
 }
 
-function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inset, weightRef, nextName, finishing, onLog, onClearSelection, onNext, onFinish }: {
-  exercise: WorkoutExercise; setIndex: number; units: Units; rejectedEdit: object | null; editing: EditingActions; rest: React.ReactNode; inset: number; weightRef: React.Ref<TextInput>
+function SetPanel({ exercise, setIndex, member, units, rejectedEdit, editing, rest, inset, weightRef, nextName, finishing, onLog, onClearSelection, onNext, onFinish }: {
+  exercise: WorkoutExercise; setIndex: number; member: string | null; units: Units; rejectedEdit: object | null; editing: EditingActions; rest: React.ReactNode; inset: number; weightRef: React.Ref<TextInput>
   nextName: string | null; finishing: boolean; onLog: () => void; onClearSelection: () => void; onNext: () => void; onFinish: () => void
 }) {
   const set = setIndex >= 0 ? exercise.sets[setIndex] : undefined
@@ -719,7 +719,7 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
   const openSet = exercise.sets.findIndex(({ done }) => !done)
   const action = set?.done ? openSet >= 0 ? `Back to set ${openSet + 1}` : 'Done' : set ? 'Log set' : nextName ? `Go to ${nextName}` : finishing ? 'Finishing…' : 'Finish workout'
   return <KeyboardLift accessibilityLabel="Current set" rest={inset + 14} gap={8} style={styles.panel}>
-    {rest ?? <View style={styles.panelStatus}><Text style={styles.panelStatusText}>{setPanelStatus(set, setIndex, exercise.sets.length)}</Text></View>}
+    {rest ?? <View style={styles.panelStatus}><Text numberOfLines={1} style={styles.panelStatusText}>{member && set ? `${member} · ${set.done ? 'editing' : `round ${setIndex + 1}`}` : setPanelStatus(set, setIndex, exercise.sets.length)}</Text></View>}
     {set && <View style={styles.panelNums}>
       <View style={styles.panelNum}>
         <SetStepper label="weight" step={-weightStep(units)} onStep={() => adjust('weight', displayWeightDeltaToKg(-weightStep(units), units))} />
@@ -953,6 +953,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const history = useSessionRead(JSON.stringify([user.uid, sessionKey, historySource, historyId]), loadHistory, Boolean(historyId))
   const currentSetIndex = panelExercise ? panelSetIndex(panelExercise.sets, selectedSet?.exerciseId === currentId ? selectedSet?.setId ?? null : null) : -1
   const nextExerciseIndex = liveSession ? upNextQueue(liveSession.exercises, panelIndex)[0] ?? -1 : -1
+  // In a pair the panel names the member the numbers go to: "B · Tricep Pushdown".
+  const panelGroup = liveSession && panelExercise && typeof panelExercise.group === 'string' ? sessionBlocks(liveSession.exercises).find((block) => block.kind === 'group' && block.indices.includes(panelIndex)) : undefined
+  const panelMember = panelGroup?.kind === 'group' && panelExercise ? `${MEMBER_LETTERS[panelGroup.indices.indexOf(panelIndex)] ?? ''} · ${panelExercise.name}` : null
   const currentRest = rest && rest.sessionId === liveSession?.sessionId ? rest : null
   const toggleSet = guardClosureInteraction(canEditCurrentSession, (exerciseId: string, setId: string, done: boolean, confirmed = false) => {
     const error = done && liveSession ? setDoneError(liveSession, exerciseId, setId) : null
@@ -1160,7 +1163,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
         </>)}
       </ScrollView>
-      {panelVisible && <SetPanel exercise={panelExercise} setIndex={currentSetIndex} units={state.status === 'ready' ? state.units : 'kg'}
+      {panelVisible && <SetPanel exercise={panelExercise} setIndex={currentSetIndex} member={panelMember} units={state.status === 'ready' ? state.units : 'kg'}
         rejectedEdit={rejectedEditState} inset={insets.bottom} weightRef={weightInput} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}

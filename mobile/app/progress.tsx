@@ -1,16 +1,15 @@
 import BottomNavigation from '../src/BottomNavigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 
 import { pluralize } from '../../src/lib/pluralize'
-import { formatCompactVolume, kgToDisplayWeight } from '../../src/shared/weightUnits'
+import { formatRoundedVolume, kgToDisplayWeight } from '../../src/shared/weightUnits'
 import {
-  PROGRESS_MUSCLE_LABELS, aggregateMuscleBalance, aggregatePeriodComparison,
-  aggregateStrengthProgression, aggregateWeeklyVolume, defaultStrengthKey, strengthDeltaLabel, withoutLeadingEmptyWeeks,
-  type RecordSummary,
+  aggregateStrengthProgression, defaultStrengthKey, formatBestSet, formatCountChange, formatPercentChange, formatSetChange,
+  previousPeriodLabel, strengthDeltaLabel, summarizeAllExercises,
 } from '../../src/shared/progress'
 import HistoryHeader from '../src/HistoryHeader'
 import { MuscleBars, StrengthChart, WeeklyVolumeChart } from '../src/ProgressCharts'
@@ -22,8 +21,6 @@ import { colors, pageTitle } from '../src/theme'
 import { Icon } from '../src/icons'
 
 const ranges = [{ label: '30 days', days: 30 }, { label: '90 days', days: 90 }, { label: 'Year', days: 365 }]
-const formatDate = (timestamp: number) => new Date(timestamp).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-const formatDelta = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(0)}% vs previous`
 
 export default function ProgressScreen() {
   const { user } = useAuthRuntime()
@@ -36,14 +33,14 @@ function ProgressContent({ uid }: { uid: string }) {
   const units = active.state.units
   const { width } = useWindowDimensions()
   const [rangeDays, setRangeDays] = useState(90)
-  const [moreStats, setMoreStats] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [loading, setLoading] = useState(true)
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(() => recallProgress(uid))
   const [strengthKey, setStrengthKey] = useState<string | null>(null)
   const [inspected, setInspected] = useState<{ key: string; index: number } | null>(null)
   const [picker, setPicker] = useState<'strength' | 'calendar' | null>(null)
-  const [recordsPage, setRecordsPage] = useState<number | null>(null)
+  const scroll = useRef<ScrollView>(null)
+  const chartY = useRef({ analysis: 0, panel: 0 })
 
   useFocusEffect(useCallback(() => {
     setLoading(true)
@@ -65,11 +62,10 @@ function ProgressContent({ uid }: { uid: string }) {
   const fetchedAt = coverage ? snapshot?.sessions?.fetchedAt ?? 0 : 0
   const records = snapshot?.records?.records ?? []
   const currentSessions = useMemo(() => sessions.filter((session) => session.finishedAt >= fetchedAt - rangeDays * 86_400_000), [sessions, fetchedAt, rangeDays])
-  const weekly = useMemo(() => withoutLeadingEmptyWeeks(aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : rangeDays === 90 ? 13 : 53, fetchedAt)), [currentSessions, rangeDays, fetchedAt])
-  const muscles = useMemo(() => aggregateMuscleBalance(currentSessions), [currentSessions])
-  const comparison = useMemo(() => aggregatePeriodComparison(sessions, rangeDays, fetchedAt), [sessions, rangeDays, fetchedAt])
+  const summary = useMemo(() => summarizeAllExercises(sessions, rangeDays, fetchedAt), [sessions, rangeDays, fetchedAt])
   const strength = useMemo(() => aggregateStrengthProgression(currentSessions), [currentSessions])
-  const selectedStrengthKey = strength.series.some((series) => series.key === strengthKey) ? strengthKey : defaultStrengthKey(strength.series)
+  const chartable = new Set(strength.series.map((series) => series.key))
+  const selectedStrengthKey = strengthKey && chartable.has(strengthKey) ? strengthKey : defaultStrengthKey(strength.series)
   const selectedStrength = strength.series.find((series) => series.key === selectedStrengthKey)
   const strengthPoints = selectedStrengthKey ? strength.data.filter((point) => Number(point[selectedStrengthKey] ?? 0) > 0) : []
   const strengthValues = strengthPoints.map((point) => Number(point[selectedStrengthKey!] ?? 0))
@@ -77,33 +73,29 @@ function ProgressContent({ uid }: { uid: string }) {
   const shownStrength = strengthValues[inspectedIndex ?? strengthValues.length - 1] ?? 0
   const exerciseNames = new Map<string, number>()
   strength.series.forEach((series) => exerciseNames.set(series.exerciseName, (exerciseNames.get(series.exerciseName) ?? 0) + 1))
-  const totalVolume = currentSessions.reduce((sum, session) => sum + session.totalVolume, 0)
-  const uniqueWorkouts = new Set(currentSessions.map((session) => session.workoutId)).size
-  const uniqueExercises = new Set(currentSessions.map((session) => `${session.exerciseSource}:${session.exerciseId}`)).size
-  const topMuscle = muscles[0]
-  const hasPrevious = comparison.previousSessions > 0
   const rangeEmpty = coverage && currentSessions.length === 0 && !(sessions.length === 0 && records.length === 0 && !!snapshot?.records && !snapshot.sessionsError && !snapshot.recordsError)
   const empty = coverage && !rangeEmpty && sessions.length === 0 && records.length === 0 && !!snapshot?.records && !snapshot.sessionsError && !snapshot.recordsError
-  const remainingRecords = records.slice(1)
-  const pageCount = Math.max(1, Math.ceil(remainingRecords.length / 20))
-  const page = Math.min(recordsPage ?? 0, pageCount - 1)
-  const visibleRecords = remainingRecords.slice(recordsPage === null ? 0 : page * 20, recordsPage === null ? 5 : page * 20 + 20)
-  const retryable = !!(snapshot?.freshnessUncertain || snapshot?.sessionsError || snapshot?.recordsError)
+  // Records only decide whether an empty range means an empty account.
+  const sessionsStale = !!(snapshot?.sessionsError || (snapshot?.recordsError && sessions.length === 0))
+  const retryable = !!snapshot?.freshnessUncertain || sessionsStale
   const nothingLoaded = !snapshot?.sessions && !snapshot?.records
   // With nothing loaded one connection message says it all; partial data lists what is stale.
   const notices = retryable && nothingLoaded ? ['Check your connection and try again.'] : [
     ...(snapshot?.freshnessUncertain ? ['Could not confirm data freshness. Recent workouts may not be visible yet.'] : []),
-    ...(snapshot?.sessionsError ? ['Could not refresh workout data.'] : []),
-    ...(snapshot?.recordsError ? ['Could not refresh all-time records.'] : []),
+    ...(sessionsStale ? ['Could not refresh workout data.'] : []),
     ...(coverage && snapshot?.sessions?.truncated ? ['Workout analytics include the 5,000 most recent entries.'] : []),
-    ...(snapshot?.records?.truncated ? ['The record list is limited to 1,000 entries.'] : []),
   ]
+  const headlineVolume = summary.averageVolume ?? summary.weeks.at(-1)?.volume ?? 0
+  const chartExercise = (key: string) => {
+    setStrengthKey(key)
+    scroll.current?.scrollTo({ y: Math.max(0, chartY.current.analysis + chartY.current.panel - 12) })
+  }
   const chartWidth = Math.max(280, width - 58)
 
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 44 }]} keyboardShouldPersistTaps="handled">
+    <ScrollView ref={scroll} contentContainerStyle={[styles.content, { paddingBottom: 44 }]} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>Progress</Text>
         {/* Loading shows below the range switch, so the switch does not move when it ends. */}
@@ -115,22 +107,39 @@ function ProgressContent({ uid }: { uid: string }) {
       {notices.length > 0 && <View accessibilityRole="alert" style={styles.notice}><View style={styles.noticeText}><Text style={styles.noticeTitle}>{retryable ? (nothingLoaded ? 'Could not load data' : 'Data needs refreshing') : 'Data range has been limited'}</Text>{notices.map((notice) => <Text key={notice} style={styles.noticeCopy}>{notice}</Text>)}</View>{retryable && <Pressable accessibilityRole="button" disabled={loading} onPress={() => setAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.link}>{loading ? 'Refreshing…' : 'Try again'}</Text></Pressable>}</View>}
 
 
-      {coverage && currentSessions.length > 0 && <View style={styles.analysis}>
-        {!rangeEmpty && !empty && <View accessibilityLabel={`All exercises, last ${rangeDays} days`} style={styles.summary}>
-          <Text accessibilityRole="header" style={styles.panelBadge}>All exercises · last {rangeDays} days</Text>
-          <Text style={styles.summaryLine}>
-            <Text style={styles.summaryValue}>{formatCompactVolume(totalVolume, units)}</Text> volume{hasPrevious ? <Text style={styles.summaryMeta}> {formatDelta(comparison.volumeDelta)}</Text> : null}
-            {' · '}<Text style={styles.summaryValue}>{uniqueWorkouts}</Text> {pluralize(uniqueWorkouts, 'session', 'sessions')}{hasPrevious ? <Text style={styles.summaryMeta}> {formatDelta(comparison.sessionsDelta)}</Text> : null}
-            {' · '}<Text style={styles.summaryValue}>{snapshot?.records ? records.length : '—'}</Text> all-time {pluralize(records.length, 'record', 'records')}
-          </Text>
-          <Pressable accessibilityRole="button" accessibilityState={{ expanded: moreStats }} onPress={() => setMoreStats(!moreStats)} style={styles.moreStats}><Text style={styles.moreStatsText}>{moreStats ? 'Less stats' : 'More stats'}</Text><Icon name={moreStats ? 'chevron-up' : 'chevron-down'} size={14} color={colors.muted} /></Pressable>
-          {moreStats && <View style={styles.moreGrid}>
-            <SummaryCell label="Avg. / session" value={formatCompactVolume(comparison.currentAvgVolume, units)} meta={hasPrevious ? formatDelta(comparison.avgVolumeDelta) : 'in range'} delta={hasPrevious ? comparison.avgVolumeDelta : null} />
-            <SummaryCell label="Exercises" value={String(uniqueExercises)} meta="in range" />
-            <SummaryCell label="Muscle group" value={topMuscle ? PROGRESS_MUSCLE_LABELS[topMuscle.muscle] ?? topMuscle.muscle : 'None'} meta={topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data'} />
+      {coverage && currentSessions.length > 0 && <View onLayout={(event) => { chartY.current.analysis = event.nativeEvent.layout.y }} style={styles.analysis}>
+        <View accessibilityLabel="All exercises">
+          <View style={styles.heroRow}>
+            <Text accessibilityRole="header" style={styles.heroLabel}><Text style={styles.heroStrong}>All exercises</Text> · {summary.averageVolume === null ? 'this week so far' : 'average of full weeks'}</Text>
+            <Text style={styles.heroLabel}>Workouts</Text>
+          </View>
+          <View style={styles.heroRow}>
+            <Text numberOfLines={1} style={styles.heroValue}>{formatRoundedVolume(headlineVolume, units)}<Text style={styles.heroUnit}> {units}{summary.averageVolume === null ? '' : ' / week'}</Text></Text>
+            <Text style={styles.heroCount}>{summary.workouts}</Text>
+          </View>
+          {summary.averageDelta !== null && <View style={[styles.heroRow, styles.heroDeltaRow]}>
+            <Text style={styles.heroLabel}><Text style={styles.heroStrong}>{formatPercentChange(summary.averageDelta)}</Text> vs {previousPeriodLabel(rangeDays)}</Text>
+            <Text style={[styles.heroLabel, styles.heroStrong]}>{formatCountChange(summary.workouts - summary.previousWorkouts)}</Text>
           </View>}
+          <View style={styles.weekly}><WeeklyVolumeChart weeks={summary.weeks} average={summary.averageVolume} units={units} width={chartWidth} /></View>
+        </View>
+        {summary.muscles.length > 0 && <View>
+          <View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Sets per muscle group</Text><Text style={styles.panelBadge}>{summary.muscleBasis === 'average' ? 'avg / week' : 'this week'}</Text></View>
+          <MuscleBars points={summary.muscles} />
+          <Text style={styles.note}>Assisting muscles count half.</Text>
         </View>}
-        <View style={styles.panel}>
+        <View>
+          <View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Exercises</Text><Text style={styles.panelBadge}>best set · vs {previousPeriodLabel(rangeDays)}</Text></View>
+          {summary.exercises.map((row) => {
+            const change = formatSetChange(row.change, units)
+            const label = `${row.exerciseName}, best set ${formatBestSet(row.best, units)}${change ? `, ${change}` : ''}`
+            const cells = <><Text numberOfLines={1} style={styles.exerciseName}>{row.exerciseName}</Text><Text style={styles.exerciseBest}>{formatBestSet(row.best, units)}</Text><Text numberOfLines={1} style={styles.exerciseChange}>{change}</Text></>
+            return chartable.has(row.key)
+              ? <Pressable key={row.key} accessibilityRole="button" accessibilityLabel={label} accessibilityHint="Shows this exercise in the weight chart" onPress={() => chartExercise(row.key)} style={styles.exerciseRow}>{cells}<Icon name="chevron-right" size={16} color={colors.mutedSoft} /></Pressable>
+              : <View key={row.key} accessible accessibilityLabel={label} style={styles.exerciseRow}>{cells}<View style={styles.chevronSpace} /></View>
+          })}
+        </View>
+        <View onLayout={(event) => { chartY.current.panel = event.nativeEvent.layout.y }} style={styles.panel}>
           {selectedStrength && <View style={styles.pickerGroup}>
             <Pressable accessibilityRole="button" accessibilityLabel={`Chart exercise, ${selectedStrength.exerciseName}`} onPress={() => setPicker('strength')} style={styles.select}>
               <Text numberOfLines={1} style={styles.selectValue}>{selectedStrength.exerciseName}{(exerciseNames.get(selectedStrength.exerciseName) ?? 0) > 1 ? ` · ${selectedStrength.key.startsWith('user:') ? 'mine' : 'shared'}` : ''}</Text>
@@ -141,29 +150,14 @@ function ProgressContent({ uid }: { uid: string }) {
             : strengthPoints.length < 3 ? <><Text style={styles.muted}>Chart needs {3 - strengthPoints.length} more {pluralize(3 - strengthPoints.length, 'day', 'days')} with recorded weight.</Text><View accessibilityLabel={`${strengthPoints.length} of 3 days for the chart`} style={styles.markers}>{[0, 1, 2].map((index) => <View key={index} style={[styles.marker, index < strengthPoints.length && styles.markerActive]} />)}</View></>
               : <><View style={styles.strengthInsight}><Text accessibilityLiveRegion="polite" style={styles.strengthLatest}>{inspectedIndex === null ? 'Latest' : `${strengthPoints[inspectedIndex]?.date} ·`} {kgToDisplayWeight(shownStrength, units)} {units}</Text><Text style={styles.strengthDelta}>{strengthDeltaLabel(strengthValues[0] ?? 0, shownStrength, strengthPoints[0]?.date ?? '', units)} · max. {kgToDisplayWeight(Math.max(...strengthValues), units)} {units}</Text></View><StrengthChart points={strengthPoints} keyName={selectedStrengthKey!} units={units} width={chartWidth} onInspect={(index) => setInspected({ key: selectedStrengthKey!, index })} /></>}
         </View>
-        <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Weekly volume</Text><Text style={styles.panelBadge}>{weekly.length} {weekly.length === 1 ? 'week' : 'weeks'}{weekly.length > 0 ? ` · ${formatCompactVolume(weekly.at(-1)?.volume ?? 0, units)} this week` : ''}</Text></View><WeeklyVolumeChart points={weekly} units={units} width={chartWidth} /></View>
-        {muscles.length > 0 && <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Muscle groups</Text><Text style={styles.panelBadge}>entries</Text></View><MuscleBars points={muscles} /></View>}
       </View>}
 
-      {rangeEmpty && <View style={styles.empty}><Text style={styles.emptyTitle}>No workouts in this date range</Text><Text style={styles.muted}>Earlier sessions and records are still saved.</Text>{rangeDays < 365 && <Pressable accessibilityRole="button" onPress={() => setRangeDays(365)} style={styles.emptyAction}><Text style={styles.link}>Show year</Text></Pressable>}</View>}
-      {records.length > 0 && <View style={styles.records}><Text accessibilityRole="header" style={styles.recordsTitle}>All-time records</Text><RecordFeature record={records[0]!} units={units} />{remainingRecords.length > 0 && <View style={styles.ledger}>{visibleRecords.map((record) => <RecordRow key={record.id} record={record} units={units} />)}{recordsPage !== null && pageCount > 1 && <View style={styles.pager}><Pressable accessibilityRole="button" disabled={page === 0} onPress={() => setRecordsPage(page - 1)} style={styles.pageAction}><Text style={[styles.link, page === 0 && styles.disabled]}>Previous</Text></Pressable><Text accessibilityLiveRegion="polite" style={styles.muted}>Page {page + 1} of {pageCount}</Text><Pressable accessibilityRole="button" disabled={page === pageCount - 1} onPress={() => setRecordsPage(page + 1)} style={styles.pageAction}><Text style={[styles.link, page === pageCount - 1 && styles.disabled]}>Next</Text></Pressable></View>}{remainingRecords.length > 5 && <Pressable accessibilityRole="button" accessibilityState={{ expanded: recordsPage !== null }} onPress={() => setRecordsPage(recordsPage === null ? 0 : null)} style={styles.showAll}><Text style={styles.link}>{recordsPage === null ? `Show all (${remainingRecords.length})` : 'Show less'}</Text></Pressable>}</View>}</View>}
-      {empty && <View style={styles.empty}><Text style={styles.emptyTitle}>No data</Text><Text style={styles.muted}>Complete a few workouts to see charts and records.</Text></View>}
+      {rangeEmpty && <View style={styles.empty}><Text style={styles.emptyTitle}>No workouts in this date range</Text><Text style={styles.muted}>Earlier workouts are still saved.</Text>{rangeDays < 365 && <Pressable accessibilityRole="button" onPress={() => setRangeDays(365)} style={styles.emptyAction}><Text style={styles.link}>Show year</Text></Pressable>}</View>}
+      {empty && <View style={styles.empty}><Text style={styles.emptyTitle}>No data</Text><Text style={styles.muted}>Complete a few workouts to see your progress.</Text></View>}
     </ScrollView>
     <ChoiceModal visible={picker === 'strength'} title="Exercise" options={strength.series.map((series) => ({ key: series.key, label: `${series.exerciseName}${(exerciseNames.get(series.exerciseName) ?? 0) > 1 ? ` · ${series.key.startsWith('user:') ? 'mine' : 'shared'}` : ''}` }))} selected={selectedStrengthKey} onSelect={(key) => { setStrengthKey(key); setPicker(null) }} onClose={() => setPicker(null)} />
   <BottomNavigation />
   </SafeAreaView>
-}
-
-function SummaryCell({ label, value, meta, delta = null }: { label: string; value: string; meta: string; delta?: number | null }) {
-  return <View accessibilityLabel={`${label}: ${value}, ${meta}`} style={styles.summaryCell}><Text style={styles.summaryLabel}>{label}</Text><Text numberOfLines={1} adjustsFontSizeToFit style={styles.cellValue}>{value}</Text>{(delta !== null || meta !== 'in range') && <Text numberOfLines={1} style={styles.summaryMeta}>{meta}</Text>}</View>
-}
-
-function RecordFeature({ record, units }: { record: RecordSummary; units: 'kg' | 'lbs' }) {
-  return <View accessibilityLabel={`Best record: ${record.exerciseName}, ${kgToDisplayWeight(record.maxWeight, units)} ${units} for ${record.maxReps} reps`} style={styles.feature}><View style={styles.recordCopy}><Text numberOfLines={1} style={styles.featureName}>{record.exerciseName}</Text><Text style={styles.recordDate}>{formatDate(record.lastPerformedAt)}</Text></View><View style={styles.featureResult}><Text numberOfLines={1} style={styles.featureWeight}>{kgToDisplayWeight(record.maxWeight, units)} <Text style={styles.featureUnit}>{units}</Text> <Text style={styles.recordDate}>× {record.maxReps}</Text></Text></View></View>
-}
-
-function RecordRow({ record, units }: { record: RecordSummary; units: 'kg' | 'lbs' }) {
-  return <View accessibilityLabel={`${record.exerciseName}: ${kgToDisplayWeight(record.maxWeight, units)} ${units} for ${record.maxReps} reps`} style={styles.ledgerRow}><View style={styles.recordCopy}><Text numberOfLines={2} style={styles.recordName}>{record.exerciseName}</Text><Text style={styles.recordDate}>{formatDate(record.lastPerformedAt)} · {record.totalSessions} {pluralize(record.totalSessions, 'session', 'sessions')}</Text></View><Text numberOfLines={1} style={styles.rowResult}>{kgToDisplayWeight(record.maxWeight, units)} {units} <Text style={styles.recordDate}>× {record.maxReps}</Text></Text></View>
 }
 
 function ChoiceModal({ visible, title, options, selected, onSelect, onClose }: { visible: boolean; title: string; options: Array<{ key: string; label: string }>; selected: string | null; onSelect: (key: string) => void; onClose: () => void }) {
@@ -173,13 +167,15 @@ function ChoiceModal({ visible, title, options, selected, onSelect, onClose }: {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 44 },
   heading: { gap: 12, paddingBottom: 20 }, title: pageTitle, link: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 }, subtitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21 }, muted: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20 },
-  ranges: { flexDirection: 'row', alignSelf: 'flex-start', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' }, rangeButton: { minHeight: 44, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', borderRadius: 9 }, rangeActive: { backgroundColor: colors.choiceSelected }, rangeText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, rangeTextActive: { color: colors.text },
+  ranges: { flexDirection: 'row', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' }, rangeButton: { flex: 1, minHeight: 44, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', borderRadius: 9 }, rangeActive: { backgroundColor: colors.choiceSelected }, rangeText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, rangeTextActive: { color: colors.text },
   loading: { paddingVertical: 50, alignItems: 'center', gap: 12 }, notice: { flexDirection: 'row', alignItems: 'center', gap: 8, borderColor: 'rgba(244, 238, 232, 0.15)', borderWidth: 1, borderRadius: 8, padding: 12, backgroundColor: 'rgba(244, 238, 232, 0.036)', marginBottom: 14 }, noticeText: { flex: 1 }, noticeTitle: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 }, noticeCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11, lineHeight: 16, marginTop: 4 }, retry: { minHeight: 44, justifyContent: 'center' },
-  summary: { marginTop: 16 }, summaryLine: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21 }, moreGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 8, paddingBottom: 4 }, summaryCell: { width: '33.33%', paddingRight: 12 }, summaryLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, summaryValue: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontVariant: ['tabular-nums'] }, cellValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 20, fontVariant: ['tabular-nums'] }, volumeLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, volumeValue: { flexDirection: 'row', alignItems: 'baseline', columnGap: 3 }, volumeAmount: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, lineHeight: 25, flexShrink: 1, fontVariant: ['tabular-nums'] }, volumeUnit: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, volumeDelta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12 }, summaryMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12 }, delta: { color: colors.muted }, down: { color: colors.muted },
-  analysis: { gap: 28, marginBottom: 24 }, panel: { }, lastPanel: { }, panelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12, gap: 12 }, panelTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 21 }, panelBadge: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, pickerGroup: { marginBottom: 2 }, select: { minHeight: 44, alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 6 }, selectHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, selectValue: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, flexShrink: 1 }, strengthLatest: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, letterSpacing: -0.94, lineHeight: 40, fontVariant: ['tabular-nums'] }, strengthDelta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 }, markers: { flexDirection: 'row', gap: 8, marginTop: 14 }, marker: { flex: 1, height: 8, backgroundColor: '#2c2623', borderRadius: 5 }, markerActive: { backgroundColor: colors.accent }, calendarSummary: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 12 }, dayInspector: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 12 }, dayPickerGroup: { gap: 5, minWidth: 86 }, daySelect: { minHeight: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, dayValue: { flex: 1, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, textAlign: 'right', marginBottom: 12 },
+  analysis: { gap: 24, marginBottom: 24 }, panel: { }, panelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', minHeight: 28, marginBottom: 4, gap: 12 }, panelTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 17, letterSpacing: -0.2 }, panelBadge: { flexShrink: 1, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, textAlign: 'right' },
+  heroRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }, heroDeltaRow: { marginTop: 4 }, heroLabel: { flexShrink: 1, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 }, heroStrong: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold' },
+  heroValue: { flexShrink: 1, color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 40, lineHeight: 44, letterSpacing: -1.3, fontVariant: ['tabular-nums'] }, heroUnit: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 18, letterSpacing: 0 }, heroCount: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 26, lineHeight: 44, letterSpacing: -0.4, fontVariant: ['tabular-nums'] }, weekly: { marginTop: 4 },
+  note: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 22, marginTop: 4 },
+  exerciseRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 }, exerciseName: { flex: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 }, exerciseBest: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 15, textAlign: 'right', fontVariant: ['tabular-nums'] }, exerciseChange: { width: 68, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, textAlign: 'right', fontVariant: ['tabular-nums'] }, chevronSpace: { width: 16 },
+  pickerGroup: { marginBottom: 2 }, select: { minHeight: 44, alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 6 }, selectValue: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, flexShrink: 1 }, strengthLatest: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, letterSpacing: -0.94, lineHeight: 40, fontVariant: ['tabular-nums'] }, strengthDelta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 }, markers: { flexDirection: 'row', gap: 8, marginTop: 14 }, marker: { flex: 1, height: 8, backgroundColor: '#2c2623', borderRadius: 5 }, markerActive: { backgroundColor: colors.accent },
   strengthInsight: { paddingBottom: 4 },
-  moreStats: { alignItems: 'center', columnGap: 4, flexDirection: 'row', minHeight: 44, width: '100%' }, moreStatsText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 },
-  records: { marginTop: 0 }, recordsTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, marginBottom: 4 }, feature: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, recordDate: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, featureName: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15 }, featureResult: { alignItems: 'flex-end', flexShrink: 0 }, featureWeight: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15, fontVariant: ['tabular-nums'] }, featureUnit: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, ledger: { gap: 2 }, ledgerRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, recordCopy: { flex: 1, minWidth: 0 }, recordName: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15 }, rowResult: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15, flexShrink: 0, fontVariant: ['tabular-nums'] }, pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingVertical: 8 }, pageAction: { minHeight: 44, justifyContent: 'center' }, disabled: { opacity: 0.4 }, showAll: { alignItems: 'center', justifyContent: 'center', minHeight: 44, marginVertical: 8, backgroundColor: colors.surfaceRaised, borderRadius: 8 },
   empty: { gap: 8, paddingVertical: 22, marginBottom: 15 }, emptyTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }, emptyAction: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center' },
   modalShade: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 22 }, modal: { maxHeight: '70%', backgroundColor: colors.surfaceRaised, borderRadius: 12, borderColor: colors.line, borderWidth: 1, padding: 16 }, modalTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 24, marginBottom: 12 }, modalList: { flexGrow: 0 }, modalOption: { minHeight: 49, justifyContent: 'center', borderBottomColor: colors.line, borderBottomWidth: 1 }, modalOptionText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 }, modalClose: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-end', marginTop: 8 },
 })

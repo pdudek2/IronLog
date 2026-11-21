@@ -125,22 +125,20 @@ export function GroupBlock({ session, indices, currentIndex, panelSet, units, us
     const id = set.clientId ?? label
     items.push(
       <div key={`${id}${side(position)}`} ref={current ? followCurrent(id) : undefined} className="workout-set-row" data-done={set.done || undefined} data-current={current || undefined}>
+        <button type="button" className="workout-set-toggle" onClick={() => onToggle(member, setIndex)}
+          aria-label={`${set.done ? 'Unmark' : 'Mark'} set ${label} for ${exercise.name}`}>
+          {set.done ? <Check size={16} aria-hidden="true" data-drawn={drawnSetId === set.clientId || undefined} /> : label}
+        </button>
         <button
           type="button"
-          className="workout-set-values workout-group-set tabular-nums"
+          className="workout-set-values tabular-nums"
           onClick={() => onSelect(member, setIndex)}
           aria-pressed={current}
           aria-label={`${label}, ${exercise.name}: last ${last}, today ${setPairLabel(set, units)}${set.done ? ', logged' : ''}`}
         >
-          <span className="workout-set-label">{label}</span>
           <span className="workout-set-previous">{last}</span>
           <span className="workout-set-today">{setPairLabel(set, units)}</span>
         </button>
-        {set.done && (
-          <button type="button" className="workout-set-check" onClick={() => onToggle(member, setIndex)} aria-label={`Unmark set ${setIndex + 1} for ${exercise.name}`}>
-            <Check size={16} aria-hidden="true" data-drawn={drawnSetId === set.clientId || undefined} />
-          </button>
-        )}
       </div>,
     )
     if (current && panel) items.push(panel)

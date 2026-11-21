@@ -563,19 +563,20 @@ function GroupBlock({ uid, session, indices, currentIndex, panelSet, units, edit
       const label = `${round + 1}${letter(member)}`
       const roundEnd = rows[position + 1]?.round !== round && position < rows.length - 1
       return <View key={set.clientId}>
-        <Pressable accessibilityRole="button" accessibilityState={{ selected: current }} accessibilityLabel={`${label}, ${exercise.name}: last ${previous}, today ${setPairLabel(set, units)}${set.done ? ', logged' : ''}`}
-          onPress={() => onSelect(exercise.clientId, set.clientId)} style={[styles.setGrid, current && styles.setRowCurrent]}>
-          <View style={[styles.setToggleColumn, styles.setTouchTarget]}><Text style={[styles.setToggle, current && styles.setToggleCurrent, set.done && styles.groupDone]}>{label}</Text></View>
-          <View style={styles.setValues}>
+        <View style={[styles.setGrid, current && styles.setRowCurrent]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${set.done ? 'Unmark' : 'Mark'} set ${label} for ${exercise.name}`}
+            onPress={() => editing.setDone(exercise.clientId, set.clientId, !set.done)} style={[styles.setToggleColumn, styles.setTouchTarget]}>
+            {set.done ? <SetTick draw={drawnSetId === set.clientId} /> : <Text style={[styles.setToggle, current && styles.setToggleCurrent]}>{label}</Text>}
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityState={{ selected: current }} accessibilityLabel={`${label}, ${exercise.name}: last ${previous}, today ${setPairLabel(set, units)}${set.done ? ', logged' : ''}`}
+            onPress={() => onSelect(exercise.clientId, set.clientId)} style={styles.setValues}>
             <Text numberOfLines={1} style={[styles.setCellMuted, styles.setValue]}>{previous}</Text>
             <Text numberOfLines={1} style={[styles.setToday, styles.setValue, set.done && styles.setTodayDone, current && styles.setTodayCurrent]}>{setPairLabel(set, units)}</Text>
-          </View>
-          {set.done ? <Pressable accessibilityRole="button" accessibilityLabel={`Unmark set ${label} for ${exercise.name}`} onPress={() => editing.setDone(exercise.clientId, set.clientId, false)}
-            style={[styles.setTrailingColumn, styles.setTouchTarget]}><SetTick draw={drawnSetId === set.clientId} /></Pressable>
-            : <View style={[styles.setTrailingColumn, styles.setTouchTarget]} />}
+          </Pressable>
+          <View style={styles.setTrailingColumn} />
           {/* Mounts again whenever another row becomes current, so the list can bring it into view. */}
           {current && <View key={set.clientId} onLayout={onCurrentRow} style={styles.rowMarker} />}
-        </Pressable>
+        </View>
         {roundEnd && rest > 0 && <View style={styles.roundRest}><Text style={styles.roundRestText}>rest {Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}</Text><View style={styles.roundRestRule} /></View>}
       </View>
     })}
@@ -722,8 +723,8 @@ function RestBar({ rest, label, onAddTime, onSkip }: { rest: Rest; label: string
       <Text style={styles.restLabel}>{label}</Text>
       <Text style={styles.restValue}>{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</Text>
     </>}
+    {!finished && <Pressable accessibilityRole="button" accessibilityLabel="Add 30 seconds" onPress={() => onAddTime(30)} style={[styles.restAction, styles.restAddTime]}><Text style={styles.restActionText}>+30 s</Text></Pressable>}
     <View style={styles.flex} />
-    {!finished && <Pressable accessibilityRole="button" accessibilityLabel="Add 30 seconds" onPress={() => onAddTime(30)} style={styles.restAction}><Text style={styles.restActionText}>+30 s</Text></Pressable>}
     <Pressable accessibilityRole="button" accessibilityLabel="Skip rest" onPress={onSkip} style={styles.restAction}><Text style={styles.restActionText}>Skip</Text></Pressable>
   </View>
 }
@@ -1287,7 +1288,6 @@ const styles = StyleSheet.create({
   groupMember: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 48 },
   groupLetter: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, width: 16 },
   groupMemberName: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 16 },
-  groupDone: { color: colors.mutedSoft },
   groupCut: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, paddingTop: 6, paddingLeft: 8 },
   rowMarker: { bottom: 0, left: 0, position: 'absolute', top: 0, width: 1 },
   roundRest: { alignItems: 'center', flexDirection: 'row', gap: 8, height: 22, paddingLeft: 44 },
@@ -1443,6 +1443,7 @@ const styles = StyleSheet.create({
   restLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, marginRight: 8 },
   restValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 22, fontVariant: ['tabular-nums'], letterSpacing: -0.35 },
   restAction: { alignItems: 'center', justifyContent: 'center', minHeight: 44, paddingHorizontal: 8 },
+  restAddTime: { marginLeft: 8 },
   restActionText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
   setGrid: { alignItems: 'center', flexDirection: 'row', marginHorizontal: -10, minHeight: 44 },
   setHeaderGrid: { minHeight: 26 },

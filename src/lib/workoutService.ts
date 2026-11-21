@@ -19,6 +19,7 @@ import { ApiRejectedError, callAuthedApi } from './authedApi'
 import { clearWorkoutDeleteRecovery, readWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from './workoutDeleteRecovery'
 import { confirmedQuery } from './confirmedQuery'
 import { parseCompressionRecord, parseGroup, type CompressionRecord } from '../shared/compressionRecord'
+import { countsTowardVolume } from '../shared/progress'
 
 interface WorkoutSetSummary {
   weight: number
@@ -217,7 +218,9 @@ export { calcStreak } from '../shared/streak'
 
 export function calcVolume(workout: WorkoutSummary): number {
   return workout.exercises.reduce(
-    (total, exercise) => total + exercise.sets.reduce((sum, set) => sum + set.weight * set.reps, 0),
+    (total, exercise) => countsTowardVolume(exercise.exerciseId, exercise.exerciseSource)
+      ? total + exercise.sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
+      : total,
     0
   )
 }

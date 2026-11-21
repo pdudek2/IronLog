@@ -9,7 +9,7 @@ import { pluralize } from '../../src/lib/pluralize'
 import { formatRoundedVolume, kgToDisplayWeight } from '../../src/shared/weightUnits'
 import {
   aggregateStrengthProgression, defaultStrengthKey, formatBestSet, formatCountChange, formatPercentChange, formatSetChange,
-  previousPeriodLabel, strengthDeltaLabel, summarizeAllExercises,
+  previousPeriodLabel, strengthDeltaLabel, summarizeAllExercises, type ProgressSessionLite,
 } from '../../src/shared/progress'
 import HistoryHeader from '../src/HistoryHeader'
 import { MuscleBars, StrengthChart, WeeklyVolumeChart } from '../src/ProgressCharts'
@@ -20,6 +20,7 @@ import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import { colors, pageTitle } from '../src/theme'
 import { Icon } from '../src/icons'
 
+const noSessions: ProgressSessionLite[] = []
 const ranges = [{ label: '30 days', days: 30 }, { label: '90 days', days: 90 }, { label: 'Year', days: 365 }]
 
 export default function ProgressScreen() {
@@ -58,7 +59,7 @@ function ProgressContent({ uid }: { uid: string }) {
   }, [uid, rangeDays, attempt]))
 
   const coverage = (snapshot?.sessions?.rangeDays ?? 0) >= rangeDays
-  const sessions = coverage ? snapshot?.sessions?.sessions ?? [] : []
+  const sessions = coverage ? snapshot?.sessions?.sessions ?? noSessions : noSessions
   const fetchedAt = coverage ? snapshot?.sessions?.fetchedAt ?? 0 : 0
   const records = snapshot?.records?.records ?? []
   const currentSessions = useMemo(() => sessions.filter((session) => session.finishedAt >= fetchedAt - rangeDays * 86_400_000), [sessions, fetchedAt, rangeDays])

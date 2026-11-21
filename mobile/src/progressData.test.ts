@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { aggregatePeriodComparison, aggregateStrengthProgression, type ProgressSessionLite, type RecordSummary } from '../../src/shared/progress'
+import { aggregateStrengthProgression, summarizeAllExercises, type ProgressSessionLite, type RecordSummary } from '../../src/shared/progress'
 import { loadProgressData, mergeProgressSnapshot, parseProgressRecord, parseProgressSession, startProgressRead, type ProgressLoadResult } from './progressData'
 
 const now = new Date('2026-09-28T12:00:00Z').getTime()
@@ -81,9 +81,9 @@ test('shared calculations keep source-aware days, zero weights, boundaries, and 
   const previous = session({ id: 'older', workoutId: 'older', finishedAt: now - 91 * 86_400_000, exerciseSource: 'user' })
   const sameId = session({ id: 'mine', workoutId: 'mine', exerciseSource: 'user', bestSetWeight: 100 })
   const zero = session({ id: 'zero', workoutId: 'zero', exerciseId: 'squat', bestSetWeight: 0 })
-  const comparison = aggregatePeriodComparison([current, previous], 90, now)
-  assert.equal(comparison.currentSessions, 1)
-  assert.equal(comparison.previousSessions, 1)
+  const summary = summarizeAllExercises([current, previous], 90, now)
+  assert.equal(summary.workouts, 1)
+  assert.equal(summary.previousWorkouts, 1)
   const strength = aggregateStrengthProgression([current, sameId, zero])
   assert.deepEqual(strength.series.map((item) => item.key).sort(), ['global:bench', 'user:bench'])
 })

@@ -2,8 +2,6 @@ import { exercises, type Category } from '../../data/exercises'
 import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
 import { addLocalDays } from './week'
 
-const MUSCLE_KEYS = ['chest', 'shoulders', 'triceps', 'back', 'biceps', 'forearms', 'quads', 'hamstrings', 'glutes', 'adductors', 'calves', 'core']
-export const PROGRESS_MUSCLE_COLORS: Record<string, string> = Object.fromEntries(MUSCLE_KEYS.map((key) => [key, '#a89f98']))
 export const PROGRESS_MUSCLE_LABELS: Record<string, string> = {
   chest: 'Chest', back: 'Back', shoulders: 'Shoulders', biceps: 'Biceps', triceps: 'Triceps', quads: 'Quads',
   hamstrings: 'Hamstrings', glutes: 'Glutes', adductors: 'Adductors', core: 'Core', calves: 'Calves', forearms: 'Forearms',
@@ -49,18 +47,6 @@ export interface ProgressRecordsResult {
   truncated: boolean
 }
 
-export interface WeeklyPoint {
-  weekLabel: string  // "7 kwi"
-  weekStart: number  // ms Monday 00:00 local
-  volume: number
-  sessions: number
-}
-
-export interface MuscleBalancePoint {
-  muscle: string
-  count: number
-}
-
 // Monday 00:00:00.000 local dla danej daty
 function getWeekMonday(date: Date): Date {
   const d = new Date(date)
@@ -70,134 +56,9 @@ function getWeekMonday(date: Date): Date {
   return d
 }
 
-// ── Aggregations (pure, client-side) ─────────────────────────────────────────
-
-export function aggregateWeeklyVolume(
-  sessions: ProgressSessionLite[],
-  weeks = 12,
-  anchorMs = Date.now(),
-): WeeklyPoint[] {
-  const now = new Date(anchorMs)
-  const buckets = new Map<number, WeeklyPoint>()
-
-  // Wygeneruj puste buckety dla ostatnich `weeks` tygodni
-  for (let i = weeks - 1; i >= 0; i--) {
-    const monday = getWeekMonday(addLocalDays(now, -i * 7))
-    const label = monday.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-    buckets.set(monday.getTime(), { weekStart: monday.getTime(), weekLabel: label, volume: 0, sessions: 0 })
-  }
-
-  // Deduplikuj sesje per workout (jeden trening = jedna sesja w wykresie)
-  const seenWorkouts = new Set<string>()
-  const workoutVolume = new Map<string, number>()
-
-  for (const s of sessions) {
-    if (!seenWorkouts.has(s.workoutId)) {
-      seenWorkouts.add(s.workoutId)
-      workoutVolume.set(s.workoutId, 0)
-    }
-    workoutVolume.set(s.workoutId, (workoutVolume.get(s.workoutId) ?? 0) + s.totalVolume)
-  }
-
-  // Przypisz wolumen do tygodnia
-  const assignedWorkouts = new Set<string>()
-  for (const s of sessions) {
-    if (assignedWorkouts.has(s.workoutId)) continue
-    assignedWorkouts.add(s.workoutId)
-
-    const monday = getWeekMonday(new Date(s.finishedAt))
-    const key = monday.getTime()
-    const bucket = buckets.get(key)
-    if (!bucket) continue
-
-    bucket.volume += workoutVolume.get(s.workoutId) ?? 0
-    bucket.sessions += 1
-  }
-
-  return [...buckets.values()]
-}
-
-export function withoutLeadingEmptyWeeks(points: WeeklyPoint[]): WeeklyPoint[] {
-  const first = points.findIndex(({ volume }) => volume > 0)
-  return first > 0 ? points.slice(first) : points
-}
-
-export function aggregateMuscleBalance(
-  sessions: ProgressSessionLite[],
-  topN = 8,
-): MuscleBalancePoint[] {
-  const counts = new Map<string, number>()
-
-  for (const s of sessions) {
-    for (const muscle of s.muscleGroups) {
-      counts.set(muscle, (counts.get(muscle) ?? 0) + 1)
-    }
-  }
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, topN)
-    .map(([muscle, count]) => ({ muscle, count }))
-}
-
-// ── Period Comparison ───────────────────────────────────────────────────────
-
-export interface PeriodComparison {
-  currentSessions: number
-  previousSessions: number
-  sessionsDelta: number
-  currentVolume: number
-  previousVolume: number
-  volumeDelta: number
-  currentAvgVolume: number
-  previousAvgVolume: number
-  avgVolumeDelta: number
-}
-
 function calcDelta(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0
   return ((current - previous) / previous) * 100
-}
-
-function countUniqueWorkouts(sessions: ProgressSessionLite[]): { count: number; volume: number } {
-  const seen = new Set<string>()
-  let volume = 0
-  for (const s of sessions) {
-    if (!seen.has(s.workoutId)) {
-      seen.add(s.workoutId)
-    }
-    volume += s.totalVolume
-  }
-  return { count: seen.size, volume }
-}
-
-export function aggregatePeriodComparison(
-  sessions: ProgressSessionLite[],
-  rangeDays: number,
-  anchorMs = Date.now(),
-): PeriodComparison {
-  const cutoffMs = anchorMs - rangeDays * 86_400_000
-  const previousCutoffMs = cutoffMs - rangeDays * 86_400_000
-  const current = sessions.filter((s) => s.finishedAt >= cutoffMs)
-  const previous = sessions.filter((s) => s.finishedAt >= previousCutoffMs && s.finishedAt < cutoffMs)
-
-  const cur = countUniqueWorkouts(current)
-  const prev = countUniqueWorkouts(previous)
-
-  const curAvg = cur.count > 0 ? cur.volume / cur.count : 0
-  const prevAvg = prev.count > 0 ? prev.volume / prev.count : 0
-
-  return {
-    currentSessions: cur.count,
-    previousSessions: prev.count,
-    sessionsDelta: calcDelta(cur.count, prev.count),
-    currentVolume: cur.volume,
-    previousVolume: prev.volume,
-    volumeDelta: calcDelta(cur.volume, prev.volume),
-    currentAvgVolume: curAvg,
-    previousAvgVolume: prevAvg,
-    avgVolumeDelta: calcDelta(curAvg, prevAvg),
-  }
 }
 
 // ── All exercises ───────────────────────────────────────────────────────────

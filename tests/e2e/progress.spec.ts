@@ -59,13 +59,15 @@ test.describe('Progress analytics', () => {
     if (emulatorMode) await closeProgressEmulator()
   })
 
-  test('loads a stable analytics board with all-time records', async ({ page }) => {
+  test('loads a stable analytics board with all exercises and no records list', async ({ page }) => {
+    await useHistoricalSessionClock(page)
     await gotoProgressReady(page)
 
     await expect(page.locator('.progress-board')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'All-time records' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'All exercises' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Exercises', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'All-time records' })).toHaveCount(0)
     await expect(page.locator('.progress-panel-head > div > p')).toHaveCount(0)
-    await expect(page.locator('.progress-records-head > div > p')).toHaveCount(0)
     await page.screenshot({ path: 'test-results/progress-loaded.png', fullPage: true })
   })
 
@@ -113,26 +115,27 @@ test.describe('Progress analytics', () => {
     )
   })
 
-  test('keeps records readable without hover', async ({ page }) => {
+  test('keeps exercise rows readable without hover and charts a row on tap', async ({ page }) => {
     await useHistoricalSessionClock(page)
     await gotoProgressReady(page)
 
-    const records = page.locator('.progress-records')
-    await records.scrollIntoViewIfNeeded()
-    await expect(page.getByRole('heading', { name: 'All-time records' })).toBeVisible()
+    const exercises = page.locator('.progress-exercises')
+    await exercises.scrollIntoViewIfNeeded()
 
     const viewport = page.viewportSize()
     expect(viewport).not.toBeNull()
 
-    const rows = records.locator('.progress-record-feature, .progress-record-ledger-row')
+    const rows = exercises.locator('.progress-exercise-row')
     expect(await rows.count()).toBeGreaterThan(0)
-    await expect(records.getByText('PR', { exact: true })).toHaveCount(0)
     for (let index = 0; index < await rows.count(); index += 1) {
       await expectNoHorizontalOverflow(rows.nth(index), viewport!.width)
     }
 
+    await exercises.getByRole('button', { name: /Phase 7 Squat/ }).click()
+    await expect(page.getByRole('combobox', { name: 'Chart exercise' })).toHaveValue(/squat/)
+    await expect(page.locator('.progress-chart-frame--strength')).toBeInViewport()
 
-    await page.screenshot({ path: 'test-results/progress-records.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/progress-exercises.png', fullPage: true })
   })
 
   test('shows one selected strength exercise and switches it without comparing scales', async ({ page }) => {
@@ -210,7 +213,7 @@ test.describe('Progress analytics', () => {
       await expectNoHorizontalOverflow(strengthPicker, width)
 
 
-      await clearNavigation(page.locator('.progress-records'))
+      await clearNavigation(page.locator('.progress-exercises'))
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0)
     }
 

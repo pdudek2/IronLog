@@ -3,7 +3,7 @@ import { Children, isValidElement, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { loadProgressData, type ProgressLoadResult } from '../../lib/progressLoadService'
-import type { ProgressSessionLite, RecordSummary } from '../../lib/progressService'
+import { formatCountChange, summarizeAllExercises, type ProgressSessionLite, type RecordSummary } from '../../lib/progressService'
 import ProgressPage, { DarkTooltip } from '../ProgressPage'
 import { useProfileStore } from '../../store/profileStore'
 
@@ -66,6 +66,7 @@ vi.mock('recharts', () => ({
     <span data-testid="strength-line" data-data-key={dataKey} data-name={name} />
   ),
   Bar: () => null,
+  ReferenceLine: () => null,
   CartesianGrid: () => null,
   Cell: () => null,
   Tooltip: () => null,
@@ -76,6 +77,8 @@ vi.mock('recharts', () => ({
 const NOW = Date.UTC(2026, 6, 10, 12)
 const DAY_MS = 86_400_000
 const mockLoadProgressData = vi.mocked(loadProgressData)
+const heroText = () => document.querySelector('.progress-hero')?.textContent ?? ''
+const workoutCount = () => document.querySelector('.progress-hero-count')?.textContent
 
 function session(
   id: string,
@@ -185,72 +188,61 @@ describe('ProgressPage', () => {
     })
 
     await waitFor(() => expect(initialPage).toHaveAttribute('aria-busy', 'false'))
-    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('2')).toBeInTheDocument()
+    expect(workoutCount()).toBe('2')
 
     fireEvent.click(screen.getByRole('button', { name: '30 days' }))
 
     expect(screen.getByTestId('progress-page')).toBe(initialPage)
     expect(initialPage).toHaveAttribute('aria-busy', 'false')
-    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('1')).toBeInTheDocument()
+    expect(workoutCount()).toBe('1')
     expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
   })
 
-  it.each([true, false])('shows each summary metric once with prior-period comparisons available: %s', async (hasPreviousPeriod) => {
-    mockLoadProgressData.mockResolvedValue(successfulLoad({
-      sessions: [
-        ...Array.from({ length: 5 }, (_, index) => session(`current-${index}`, index + 1, { totalVolume: 450 })),
-        ...(hasPreviousPeriod ? [
-          session('previous-1', 100, { totalVolume: 500 }),
-          session('previous-2', 120, { totalVolume: 600 }),
-        ] : []),
-      ],
-      records: [record('record-1')],
+  it.each([true, false])('shows the weekly average and workouts, with their change only after enough history: %s', async (hasPreviousPeriod) => {
+    const sessions = Array.from({ length: hasPreviousPeriod ? 26 : 12 }, (_, index) => session(`week-${index}`, 1 + 7 * index, {
+      totalVolume: index < 13 ? 12_000 : 10_000,
     }))
+    mockLoadProgressData.mockResolvedValue(successfulLoad({ sessions }))
     render(<ProgressPage />)
 
-    const summary = await screen.findByRole('group', { name: 'Summary: 90 days' })
-    const volume = within(summary).getByRole('group', { name: 'Volume' })
-    const sessions = within(summary).getByRole('group', { name: 'Sessions' })
-    const average = within(summary).getByRole('group', { name: 'Avg. / session' })
-    expect(within(volume).getByText('2,250 kg')).toBeInTheDocument()
-    expect(within(volume).getByText('Last 90 days')).toBeInTheDocument()
-    expect(within(sessions).getByText('5')).toBeInTheDocument()
-    expect(within(average).getByText('450 kg')).toBeInTheDocument()
-    expect(within(summary).getAllByRole('group')).toHaveLength(7)
-    for (const name of ['Volume', 'Sessions', 'Avg. / session', 'Exercises', 'Records', 'Muscle group']) {
-      expect(within(summary).getAllByRole('group', { name })).toHaveLength(1)
-    }
-    expect(document.querySelector('.progress-comparison-strip')).not.toBeInTheDocument()
-    expect(within(summary).queryByText('2.3k kg')).not.toBeInTheDocument()
+    await screen.findByRole('region', { name: 'All exercises' })
+    const expected = summarizeAllExercises(sessions, 90, NOW)
+    expect(expected.averageVolume).not.toBeNull()
+    expect(heroText()).toContain('average of full weeks')
+    expect(heroText()).toContain('kg / week')
+    expect(workoutCount()).toBe(String(expected.workouts))
 
     if (hasPreviousPeriod) {
-      expect(within(volume).getByText('+105% vs previous')).toHaveAttribute('data-trend', 'up')
-      expect(within(sessions).getByText('+150% vs previous')).toHaveAttribute('data-trend', 'up')
-      expect(within(average).getByText('-18% vs previous')).toHaveAttribute('data-trend', 'down')
-      expect(within(summary).getAllByText(/vs previous/)).toHaveLength(3)
+      expect(expected.averageDelta).toBeGreaterThan(0)
+      expect(heroText()).toMatch(/\+\d+% vs previous 90 days/)
+      expect(heroText()).toContain(`Workouts${expected.workouts}${formatCountChange(expected.workouts - expected.previousWorkouts)}`)
     } else {
-      expect(within(summary).queryByText(/vs previous/)).not.toBeInTheDocument()
+      expect(expected.averageDelta).toBeNull()
+      expect(heroText()).not.toContain('vs previous')
     }
   })
 
-  it('presents volume, strength and records in lbs while retaining kg chart data', async () => {
+  it('presents the weekly volume, best sets and strength in lbs while retaining kg chart data', async () => {
     useProfileStore.getState().setProfile('user-1', {
       displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'lbs', createdAt: 1,
     })
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [
-        session('one', 3, { totalVolume: 520, bestSetWeight: 65 }),
-        session('two', 2, { totalVolume: 520, bestSetWeight: 65 }),
-        session('three', 1, { totalVolume: 520, bestSetWeight: 65 }),
+        session('one', 3, { totalVolume: 520, bestSetWeight: 65, bestSetReps: 5 }),
+        session('two', 2, { totalVolume: 520, bestSetWeight: 65, bestSetReps: 5 }),
+        session('three', 1, { totalVolume: 520, bestSetWeight: 65, bestSetReps: 5 }),
       ],
-      records: [record('record-lbs', { maxWeight: 65 })],
     }))
 
     render(<ProgressPage />)
 
-    const summary = await screen.findByRole('group', { name: 'Summary: 90 days' })
-    expect(within(summary).getByRole('group', { name: 'Avg. / session' })).toHaveTextContent('1,146 lbs')
-    expect(screen.getByLabelText('Best record')).toHaveTextContent('143.3 lbs')
+    await screen.findByRole('region', { name: 'All exercises' })
+    // No full week yet, so the headline counts this week: 1,560 kg is 3,439 lbs.
+    expect(heroText()).toContain('this week so far')
+    expect(heroText()).toContain('3,440lbs')
+    const row = screen.getByRole('button', { name: /Wyciskanie sztangi/ })
+    expect(row).toHaveTextContent('143.3 × 5')
+    expect(screen.getByRole('img', { name: /Weekly volume/ })).toHaveAccessibleName(/This week so far 3,439 lbs/)
     expect(screen.getByRole('img', { name: /Weight progression/ })).toHaveAccessibleName(/143.3 lbs/)
   })
 
@@ -260,29 +252,24 @@ describe('ProgressPage', () => {
       .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1')] }))
       .mockReturnValueOnce(annual.promise)
     render(<ProgressPage />)
-    await screen.findByRole('group', { name: 'Sessions' })
+    await screen.findByRole('region', { name: 'All exercises' })
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 90)
 
     fireEvent.click(screen.getByRole('button', { name: 'Year' }))
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
     expect(screen.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('Loading progress')).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: 'Sessions' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Weekly volume' })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'All exercises' })).not.toBeInTheDocument()
 
     await act(async () => annual.resolve(successfulLoad({
       sessions: [session('recent', 10), session('old-current-year', 200), session('previous-year', 400)],
       records: [record('record-1')],
     })))
-    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('2')).toBeInTheDocument()
-    const comparison = screen.getByRole('group', { name: 'Summary: 365 days' })
-    expect(within(comparison).getByRole('group', { name: 'Volume' })).toHaveTextContent('2,000 kg')
-    expect(within(comparison).getAllByText('+100% vs previous')).toHaveLength(2)
-    expect(within(comparison).getByText('+0% vs previous')).toBeInTheDocument()
+    expect(workoutCount()).toBe('2')
+    expect(screen.getByText('best set · vs previous year')).toBeInTheDocument()
     expect(screen.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'false')
     fireEvent.click(screen.getByRole('button', { name: '90 days' }))
-    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('1')).toBeInTheDocument()
+    expect(workoutCount()).toBe('1')
     expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
   })
 
@@ -292,31 +279,28 @@ describe('ProgressPage', () => {
       .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1')] }))
       .mockReturnValueOnce(annual.promise)
     render(<ProgressPage />)
-    await screen.findByRole('group', { name: 'Sessions' })
+    await screen.findByRole('region', { name: 'All exercises' })
     fireEvent.click(screen.getByRole('button', { name: 'Year' }))
 
     await act(async () => annual.resolve({
-      ...successfulLoad({ records: [record('record-2', { exerciseName: 'Nowy rekord' })] }),
+      ...successfulLoad({ records: [record('record-2')] }),
       sessions: { status: 'error', error: new Error('annual sessions unavailable') },
     }))
-    expect(screen.queryByRole('group', { name: 'Sessions' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Weekly volume' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'All exercises' })).not.toBeInTheDocument()
     expect(screen.queryByText('No data', { exact: true })).not.toBeInTheDocument()
-    expect(screen.getByText('Nowy rekord')).toBeInTheDocument()
     expect(screen.getByText('Could not refresh workout data.')).toBeInTheDocument()
 
     mockLoadProgressData.mockResolvedValueOnce(successfulLoad({ sessions: [session('older', 200)] }))
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('group', { name: 'Sessions' })
+    await screen.findByRole('region', { name: 'All exercises' })
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
-    expect(screen.getByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
   })
 
   it('discards the previous account snapshot and its in-flight range result', async () => {
     const annual = deferred<ProgressLoadResult>()
     const nextAccount = deferred<ProgressLoadResult>()
     mockLoadProgressData
-      .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1', { exerciseName: 'Account A record' })] }))
+      .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10, { exerciseName: 'Account A record' })], records: [record('record-1')] }))
       .mockReturnValueOnce(annual.promise)
       .mockReturnValueOnce(nextAccount.promise)
     const view = render(<ProgressPage />)
@@ -327,32 +311,35 @@ describe('ProgressPage', () => {
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-2', 90)
     expect(screen.queryByText('Account A record')).not.toBeInTheDocument()
     await act(async () => annual.resolve(successfulLoad({ sessions: [session('stale-account', 200)], records: [record('stale-record')] })))
-    expect(screen.queryByRole('group', { name: 'Sessions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'All exercises' })).not.toBeInTheDocument()
     await act(async () => nextAccount.resolve(successfulLoad()))
     expect(screen.getByText('No data', { exact: true })).toBeInTheDocument()
     expect(screen.queryByText('Wyciskanie sztangi')).not.toBeInTheDocument()
   })
 
-  it('renders charts data and a records-unavailable notice when records fail', async () => {
+  it('keeps analytics without a notice when only records fail, and asks for a retry when nothing else is known', async () => {
     const recordsError = new Error('records unavailable')
     mockLoadProgressData.mockResolvedValue({
       ...successfulLoad({ sessions: [session('recent', 2)] }),
       records: { status: 'error', error: recordsError },
     })
 
-    render(<ProgressPage />)
+    const view = render(<ProgressPage />)
 
-    expect(await screen.findByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
-    expect(screen.getByText('Could not refresh all-time records.').closest('[role="status"]')).toBeInTheDocument()
-    const recordsMetric = screen.getByText('Records').parentElement
-    expect(recordsMetric).not.toBeNull()
-    expect(within(recordsMetric!).getByText('—')).toBeInTheDocument()
-    expect(screen.queryByText('Could not load data')).not.toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'All exercises' })).toBeInTheDocument()
+    expect(screen.queryByText('Could not refresh workout data.')).not.toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledTimes(1)
     expect(consoleError).toHaveBeenCalledWith('[ProgressPage] records load failed', recordsError)
+
+    // Without sessions the records decide between "No data" and an empty range, so the failure shows.
+    view.unmount()
+    mockLoadProgressData.mockResolvedValue({ ...successfulLoad(), records: { status: 'error', error: recordsError } })
+    render(<ProgressPage />)
+    expect(await screen.findByText('Could not refresh workout data.')).toBeInTheDocument()
+    expect(screen.queryByText('No data', { exact: true })).not.toBeInTheDocument()
   })
 
-  it('renders all-time records and a sessions-unavailable notice when sessions fail', async () => {
+  it('shows a sessions-unavailable notice without analytics when sessions fail', async () => {
     const sessionsError = new Error('sessions unavailable')
     mockLoadProgressData.mockResolvedValue({
       ...successfulLoad({ records: [record('record-1')] }),
@@ -361,144 +348,11 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Could not refresh workout data.')
-    expect(screen.queryByRole('heading', { name: 'Weekly volume' })).not.toBeInTheDocument()
+    expect((await screen.findByText('Could not refresh workout data.')).closest('[role="status"]')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'All exercises' })).not.toBeInTheDocument()
+    expect(screen.queryByText('No data', { exact: true })).not.toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledTimes(1)
     expect(consoleError).toHaveBeenCalledWith('[ProgressPage] sessions load failed', sessionsError)
-  })
-
-  it('keeps one featured record and renders the rest as ledger rows', async () => {
-    mockLoadProgressData.mockResolvedValue(successfulLoad({
-      records: [
-        record('record-1'),
-        record('record-2', { exerciseName: 'Przysiad' }),
-        record('record-3', { exerciseName: 'Martwy ciąg' }),
-      ],
-    }))
-
-    render(<ProgressPage />)
-
-    const featured = await screen.findByLabelText('Best record')
-    const ledger = screen.getByLabelText('More records')
-    expect(featured.querySelectorAll('.progress-record-feature')).toHaveLength(1)
-    expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(2)
-    expect(screen.queryByRole('button', { name: /Show all/i })).not.toBeInTheDocument()
-    expect(screen.queryByText('PR', { exact: true })).not.toBeInTheDocument()
-  })
-
-  it('shows only five remaining records by default and toggles the full list accessibly', async () => {
-    mockLoadProgressData.mockResolvedValue(successfulLoad({
-      records: [
-        record('record-1', { exerciseName: 'Wyciskanie' }),
-        record('record-2', { exerciseName: 'Przysiad' }),
-        record('record-3', { exerciseName: 'Martwy ciąg' }),
-        record('record-4', { exerciseName: 'Wiosłowanie' }),
-        record('record-5', { exerciseName: 'OHP' }),
-        record('record-6', { exerciseName: 'Podciąganie' }),
-        record('record-7', { exerciseName: 'Hip thrust' }),
-      ],
-    }))
-
-    render(<ProgressPage />)
-
-    const ledger = await screen.findByLabelText('More records')
-    const toggle = screen.getByRole('button', { name: 'Show all (6)' })
-
-    expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(5)
-    expect(within(ledger).queryByText('Hip thrust')).not.toBeInTheDocument()
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(toggle).toHaveAttribute('aria-controls', 'progress-remaining-records')
-
-    fireEvent.click(toggle)
-
-    const expandedLedger = screen.getByLabelText('More records')
-    expect(expandedLedger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(6)
-    expect(within(expandedLedger).getByText('Hip thrust')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show less' }))
-
-    const collapsedLedger = screen.getByLabelText('More records')
-    expect(collapsedLedger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(5)
-    expect(within(collapsedLedger).queryByText('Hip thrust')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Show all (6)' })).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('pages every remaining record in bounded groups, handles the last page and resets on collapse', async () => {
-    mockLoadProgressData.mockResolvedValue(successfulLoad({
-      records: Array.from({ length: 46 }, (_, index) => record(`record-${index}`, {
-        exerciseName: `Exercise ${index}`,
-      })),
-    }))
-    render(<ProgressPage />)
-
-    await screen.findByLabelText('More records')
-    const rowNames = () => Array.from(screen.getByLabelText('More records').querySelectorAll('.progress-record-ledger-row strong'), (row) => row.textContent)
-    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Exercise ${index + 1}`))
-    expect(screen.queryByRole('navigation', { name: 'Record pages' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Show all (45)' }))
-
-    const previous = () => screen.getByRole('button', { name: 'Previous record page' })
-    const next = () => screen.getByRole('button', { name: 'Next record page' })
-    expect(previous()).toBeDisabled()
-    expect(next()).toBeEnabled()
-    expect(next()).toHaveAttribute('aria-controls', 'progress-remaining-records')
-    expect(screen.getByText('Page 1 of 3')).toHaveAttribute('aria-live', 'polite')
-    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Exercise ${index + 1}`))
-    const visited = [...rowNames()]
-    fireEvent.click(previous())
-    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument()
-
-    fireEvent.click(next())
-    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument()
-    expect(previous()).toBeEnabled()
-    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Exercise ${index + 21}`))
-    visited.push(...rowNames())
-    fireEvent.click(next())
-    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument()
-    expect(next()).toBeDisabled()
-    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Exercise ${index + 41}`))
-    visited.push(...rowNames())
-    expect(visited).toEqual(Array.from({ length: 45 }, (_, index) => `Exercise ${index + 1}`))
-    expect(within(screen.getByLabelText('Best record')).getByText('Exercise 0')).toBeInTheDocument()
-    fireEvent.click(next())
-    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument()
-    fireEvent.click(previous())
-    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show less' }))
-    expect(rowNames()).toHaveLength(5)
-    expect(screen.queryByRole('navigation', { name: 'Record pages' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Show all (45)' }))
-    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument()
-    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Exercise ${index + 1}`))
-    expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
-  })
-
-  it('clamps the expanded page when refreshed records shrink', async () => {
-    mockLoadProgressData
-      .mockResolvedValueOnce(successfulLoad({
-        records: Array.from({ length: 46 }, (_, index) => record(`record-${index}`, { exerciseName: `Exercise ${index}` })),
-        freshness: 'uncertain',
-      }))
-      .mockResolvedValueOnce(successfulLoad({
-        records: Array.from({ length: 22 }, (_, index) => record(`record-${index}`, { exerciseName: `Exercise ${index}` })),
-      }))
-    render(<ProgressPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Show all (45)' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Next record page' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Next record page' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-
-    expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Next record page' })).toBeDisabled()
-    const ledger = screen.getByLabelText('More records')
-    expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(1)
-    expect(within(ledger).getByText('Exercise 21')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Previous record page' }))
-    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
-    expect(screen.getByLabelText('More records').querySelectorAll('.progress-record-ledger-row')).toHaveLength(20)
   })
 
   it('shows the hard error only when both datasets fail with no previous snapshot', async () => {
@@ -522,7 +376,7 @@ describe('ProgressPage', () => {
     expect(consoleError).toHaveBeenNthCalledWith(2, '[ProgressPage] records load failed', recordsError)
   })
 
-  it('replaces empty-range metrics with one longer-range action and retains all-time records', async () => {
+  it('replaces empty-range analytics with one longer-range action', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [session('older', 60)],
       records: [record('record-1')],
@@ -530,7 +384,7 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'All exercises' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '30 days' }))
 
     const emptyStatus = screen.getByRole('status')
@@ -539,10 +393,18 @@ describe('ProgressPage', () => {
     fireEvent.click(within(emptyStatus).getByRole('button', { name: 'Show year' }))
 
     expect(screen.getByRole('button', { name: 'Year' })).toHaveAttribute('aria-pressed', 'true')
-    expect(await screen.findByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'All exercises' })).toBeInTheDocument()
     expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
+  })
+
+  it('treats saved records without recent sessions as an empty range, not as no data', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({ records: [record('record-1')] }))
+
+    render(<ProgressPage />)
+
+    expect((await screen.findByText('No workouts in this date range')).closest('[role="status"]')).toBeInTheDocument()
+    expect(screen.queryByText('No data', { exact: true })).not.toBeInTheDocument()
   })
 
   it('announces truncation and uncertain freshness with one retry action', async () => {
@@ -562,7 +424,7 @@ describe('ProgressPage', () => {
       return settledNotice
     })
     expect(notice).toHaveTextContent('Workout analytics include the 5,000 most recent entries.')
-    expect(notice).toHaveTextContent('The record list is limited to 1,000 entries.')
+    expect(notice).not.toHaveTextContent('record')
     expect(screen.getAllByRole('button', { name: 'Try again' })).toHaveLength(1)
   })
 
@@ -583,7 +445,7 @@ describe('ProgressPage', () => {
     })
     expect(notice).toHaveTextContent('Data range has been limited')
     expect(notice).toHaveTextContent('Workout analytics include the 5,000 most recent entries.')
-    expect(notice).toHaveTextContent('The record list is limited to 1,000 entries.')
+    expect(notice).not.toHaveTextContent('record')
     expect(within(notice).queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
 
@@ -606,29 +468,19 @@ describe('ProgressPage', () => {
 
     expect(screen.getByTestId('progress-page')).toBe(page)
     expect(page).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
-    const recordsSection = screen.getByRole('heading', { name: 'All-time records' }).closest('section')
-    expect(recordsSection).not.toBeNull()
-    expect(within(recordsSection!).getByText('Wyciskanie sztangi')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'All exercises' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled()
 
     await act(async () => {
       pendingRetry.resolve({
-        ...successfulLoad({ records: [record('squat-record', {
-          exerciseId: 'squat',
-          exerciseName: 'Przysiad',
-          maxWeight: 140,
-        })] }),
+        ...successfulLoad({ records: [record('squat-record')] }),
         sessions: { status: 'error', error: sessionsError },
       })
     })
 
     await waitFor(() => expect(page).toHaveAttribute('aria-busy', 'false'))
-    expect(screen.getByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
-    const refreshedRecordsSection = screen.getByRole('heading', { name: 'All-time records' }).closest('section')
-    expect(refreshedRecordsSection).not.toBeNull()
-    expect(within(refreshedRecordsSection!).getByText('Przysiad')).toBeInTheDocument()
-    expect(within(refreshedRecordsSection!).queryByText('Wyciskanie sztangi')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'All exercises' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Wyciskanie sztangi/ })).toBeInTheDocument()
     expect(screen.getByText('Could not refresh workout data.').closest('[role="status"]')).toBeInTheDocument()
   })
 
@@ -642,7 +494,7 @@ describe('ProgressPage', () => {
       }))
       .mockResolvedValueOnce({
         ...successfulLoad({
-          records: [record('record-2', { exerciseName: 'Martwy ciąg po odświeżeniu' })],
+          records: [record('record-2')],
           fetchedAt: NOW + 30 * DAY_MS,
         }),
         sessions: { status: 'error', error: sessionsError },
@@ -650,17 +502,14 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('img', { name: /Workout volume/ })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: /Weekly volume/ })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     const page = screen.getByTestId('progress-page')
     await waitFor(() => expect(page).toHaveAttribute('aria-busy', 'false'))
     expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
-    const recordsSection = screen.getByRole('heading', { name: 'All-time records' }).closest('section')
-    expect(recordsSection).not.toBeNull()
-    expect(within(recordsSection!).getByText('Martwy ciąg po odświeżeniu')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /Workout volume/ })).toBeInTheDocument()
-    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('1')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Weekly volume/ })).toBeInTheDocument()
+    expect(workoutCount()).toBe('1')
     expect(screen.queryByText('No workouts in this date range.')).not.toBeInTheDocument()
   })
 
@@ -805,20 +654,49 @@ describe('ProgressPage', () => {
     expect(selector).toHaveValue('global:bench')
   })
 
-  it('uses singular and plural forms in the muscle balance accessible summary', async () => {
+  it('counts sets per muscle as whole numbers for this week until a full week exists', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [
-        session('chest', 2, { muscleGroups: ['chest'] }),
-        session('back', 1, { muscleGroups: ['back'] }),
+        session('chest', 2, { exerciseSource: 'user', muscleGroups: ['chest', 'triceps'], totalSets: 3 }),
+        session('back', 1, { exerciseSource: 'user', exerciseId: 'row', muscleGroups: ['back'], totalSets: 4 }),
       ],
     }))
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('img', {
-      name: 'Muscle group balance. Most trained group: Chest, 1 entry. Total 2 entries in this view.',
-    })).toBeInTheDocument()
-    expect(screen.getByText('Muscle group')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Muscle groups' })).toBeInTheDocument()
+    const block = (await screen.findByRole('heading', { name: 'Sets per muscle group' })).closest('section')!
+    expect(within(block).getByText('this week')).toBeInTheDocument()
+    const rows = Array.from(block.querySelectorAll('.progress-muscle-row'), (row) => row.textContent)
+    expect(rows).toEqual(['Back4', 'Chest3', 'Triceps2'])
+    expect(within(block).getByText('Assisting muscles count half.')).toBeInTheDocument()
+  })
+
+  it('lists each exercise best set and charts a weighted one from its row', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [
+        session('bench-old', 100, { bestSetWeight: 75, bestSetReps: 5 }),
+        session('bench-1', 3, { bestSetWeight: 80, bestSetReps: 5 }),
+        session('bench-2', 2, { bestSetWeight: 80, bestSetReps: 5 }),
+        session('bench-3', 1, { bestSetWeight: 80, bestSetReps: 5 }),
+        session('row-1', 1, { exerciseId: 'row', exerciseName: 'Wiosłowanie', bestSetWeight: 50, bestSetReps: 8 }),
+        session('dip-old', 95, { exerciseSource: 'user', exerciseId: 'dip', exerciseName: 'Dipy', bestSetWeight: 0, bestSetReps: 10 }),
+        session('dip-1', 1, { exerciseSource: 'user', exerciseId: 'dip', exerciseName: 'Dipy', bestSetWeight: 0, bestSetReps: 10 }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+
+    expect(await screen.findByRole('button', { name: /Wyciskanie sztangi/ })).toHaveTextContent('80 × 5+5 kg')
+    const bodyweight = screen.getByText('Dipy').closest('.progress-exercise-row')!
+    expect(bodyweight.tagName).toBe('DIV')
+    expect(bodyweight).toHaveTextContent('10 repssame')
+    expect(screen.getByText('best set · vs previous 90 days')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Wiosłowanie/ }))
+    expect(screen.getByRole('combobox', { name: 'Chart exercise' })).toHaveValue('global:row')
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    delete (Element.prototype as Partial<Element>).scrollIntoView
   })
 })

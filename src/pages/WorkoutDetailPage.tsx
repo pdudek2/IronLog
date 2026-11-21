@@ -3,6 +3,7 @@ import { ApiRejectedError } from '../lib/authedApi'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { exerciseSummaryLabel } from '../shared/workoutDisplay'
+import { countsTowardVolume } from '../shared/progress'
 import { acceptSetInput, weightSlip } from '../shared/setInput'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -856,7 +857,7 @@ export default function WorkoutDetailPage() {
                             <td className="workout-detail-set-index">{setIndex + 1}</td>
                             <td>{kgToDisplayWeight(set.weight, units)}</td>
                             <td>{set.reps}</td>
-                            <td>{kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('en-US')}</td>
+                            <td>{countsTowardVolume(exercise.exerciseId, exercise.exerciseSource) ? kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('en-US') : '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -904,7 +905,7 @@ export default function WorkoutDetailPage() {
                             aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
                           />
                           <span className="hidden lg:block">
-                            {kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('en-US')}
+                            {countsTowardVolume(exercise.exerciseId, exercise.exerciseSource) ? kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('en-US') : '—'}
                           </span>
                           {exercise.sets.length > 1 ? (
                             <button

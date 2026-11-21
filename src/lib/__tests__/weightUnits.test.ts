@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   displayWeightStringToKg,
   formatCompactVolume,
+  formatRoundedVolume,
+  formatShortVolume,
   kgToDisplayWeight,
 } from '../weightUnits'
 
@@ -22,5 +24,10 @@ describe('weight unit boundaries', () => {
     expect(formatCompactVolume(9_999.6, 'kg')).toBe('10k kg')
     expect(formatCompactVolume(17_000, 'kg')).toBe('17k kg')
     expect(formatCompactVolume(164_389, 'kg')).toBe('164k kg')
+  })
+
+  it('rounds the weekly average and shortens chart labels, also in lbs', () => {
+    expect([formatRoundedVolume(19_187, 'kg'), formatRoundedVolume(4_234, 'kg'), formatRoundedVolume(19_187, 'lbs')]).toEqual(['19,200', '4,230', '42,300'])
+    expect([formatShortVolume(19_187, 'kg'), formatShortVolume(9_504, 'kg'), formatShortVolume(30_000, 'kg'), formatShortVolume(640, 'kg'), formatShortVolume(9_504, 'lbs')]).toEqual(['19.2k', '9.5k', '30k', '640', '21k'])
   })
 })

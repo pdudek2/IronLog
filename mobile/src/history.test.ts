@@ -43,6 +43,11 @@ test('history derives source-scoped categories, filters title/exercises and grou
   const older = deriveWorkout(workout('older', Date.UTC(2024, 2, 15)), exerciseMap)
   assert.equal(recent.totalSets, 2)
   assert.equal(recent.totalVolume, 1120)
+  const assisted = deriveWorkout(workout('assisted', Date.UTC(2025, 2, 16), { exercises: [
+    { exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: [{ weight: 65, reps: 8 }] },
+    { exerciseId: 'assisted-pull-up', exerciseSource: 'global', name: 'Assisted Pull-up', sets: [{ weight: 30, reps: 8 }] },
+  ] }), exerciseMap)
+  assert.deepEqual([assisted.totalVolume, assisted.totalSets, assisted.totalReps], [520, 2, 16])
   assert.deepEqual([...recent.categories], ['chest'])
   assert.deepEqual(filterWorkouts([recent, older], {
     range: '365', rangeAnchorMs: Date.UTC(2025, 3, 1), search: 'bench', category: 'chest',

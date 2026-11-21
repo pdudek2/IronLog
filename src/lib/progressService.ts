@@ -1,7 +1,7 @@
 import { type DocumentData, type QueryDocumentSnapshot, type QuerySnapshot, collection, getDocs, limit, orderBy, query, startAfter, where } from 'firebase/firestore'
 import { db } from './firebase'
 
-import { type ProgressRecordsResult, type ProgressSessionLite, type ProgressSessionsResult, type RecordSummary } from '../shared/progress'
+import { progressExtras, type ProgressRecordsResult, type ProgressSessionLite, type ProgressSessionsResult, type RecordSummary } from '../shared/progress'
 import { confirmedQuery } from './confirmedQuery'
 export * from '../shared/progress'
 
@@ -15,11 +15,14 @@ const RECORD_LIMIT = 1_000
 const PAGE_SIZE = 1_000
 
 function normalizeProgressSession(id: string, data: DocumentData): ProgressSessionLite {
+  const exerciseId = typeof data.exerciseId === 'string' ? data.exerciseId : ''
+  const exerciseSource = (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global'
   return {
     id,
+    ...progressExtras(data, exerciseId, exerciseSource),
     workoutId: typeof data.workoutId === 'string' ? data.workoutId : '',
-    exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
-    exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
+    exerciseId,
+    exerciseSource,
     finishedAt: toNum(data.finishedAt),
     totalVolume: toNum(data.totalVolume),
     totalSets: toNum(data.totalSets),

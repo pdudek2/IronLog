@@ -1,4 +1,5 @@
 import { parseCompressionRecord, parseGroup, type CompressionRecord } from '../../src/shared/compressionRecord'
+import { countsTowardVolume } from '../../src/shared/progress'
 import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import type { ExerciseSource } from './session'
@@ -120,9 +121,10 @@ export function deriveWorkout(workout: SavedWorkout, exerciseMap: ReadonlyMap<st
   for (const exercise of workout.exercises) {
     exerciseNames.push(exercise.name)
     totalSets += exercise.sets.length
+    const counts = countsTowardVolume(exercise.exerciseId, exercise.exerciseSource)
     for (const set of exercise.sets) {
       totalReps += set.reps
-      totalVolume += set.weight * set.reps
+      if (counts) totalVolume += set.weight * set.reps
     }
     if (exercise.exerciseId) {
       const category = exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)?.category

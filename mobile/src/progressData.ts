@@ -1,4 +1,4 @@
-import type { ProgressRecordsResult, ProgressSessionLite, ProgressSessionsResult, RecordSummary } from '../../src/shared/progress'
+import { progressExtras, type ProgressRecordsResult, type ProgressSessionLite, type ProgressSessionsResult, type RecordSummary } from '../../src/shared/progress'
 import { recallRead, rememberRead } from './scopedRead'
 
 function object(value: unknown): Record<string, unknown> {
@@ -25,10 +25,13 @@ export function parseProgressSession(id: string, uid: string, raw: unknown): Pro
   const data = object(raw)
   if (data.userId !== uid) throw new Error('Progress session belongs to another account.')
   if (!Array.isArray(data.muscleGroups) || !data.muscleGroups.every((group) => typeof group === 'string')) throw new Error('Invalid progress muscle groups.')
+  const exerciseId = text(data.exerciseId)
+  const exerciseSource = source(data.exerciseSource)
   return {
-    id, workoutId: text(data.workoutId), exerciseId: text(data.exerciseId), exerciseSource: source(data.exerciseSource),
+    id, workoutId: text(data.workoutId), exerciseId, exerciseSource,
     finishedAt: number(data.finishedAt), totalVolume: number(data.totalVolume), totalSets: number(data.totalSets),
     bestSetWeight: number(data.bestSetWeight), exerciseName: text(data.exerciseName), muscleGroups: data.muscleGroups,
+    ...progressExtras(data, exerciseId, exerciseSource),
   }
 }
 

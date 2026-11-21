@@ -1,4 +1,5 @@
 import { WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { countsTowardVolume } from '../../src/shared/progress'
 import { formatCompactVolume } from '../../src/shared/weightUnits'
 import { exercises as exerciseCatalog } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, EXERCISE_CATEGORY_COLORS, getEquipmentLabel } from '../../src/lib/exerciseLabels'
@@ -121,7 +122,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
         </View>
       </View>
         <View>{draft && <>
-          <View style={styles.facts}>{[...(hasRecordedDuration(draft.startedAt, draft.finishedAt) ? [['Time', formatWorkoutDuration(draft.startedAt, draft.finishedAt)]] : []), ['Sets', String(sets.length)], ['Reps', String(sets.reduce((n, set) => n + set.reps, 0))], ['Volume', formatCompactVolume(sets.reduce((n, set) => n + set.weight * set.reps, 0), draft.units)]].map(([label, value]) => <View key={label} style={styles.fact}><Text style={styles.label}>{label}</Text><Text numberOfLines={1} style={styles.factValue}>{value}</Text></View>)}</View>
+          <View style={styles.facts}>{[...(hasRecordedDuration(draft.startedAt, draft.finishedAt) ? [['Time', formatWorkoutDuration(draft.startedAt, draft.finishedAt)]] : []), ['Sets', String(sets.length)], ['Reps', String(sets.reduce((n, set) => n + set.reps, 0))], ['Volume', formatCompactVolume((content?.exercises ?? []).filter((ex) => countsTowardVolume(ex.exerciseId, ex.exerciseSource)).flatMap((ex) => ex.sets).reduce((n, set) => n + set.weight * set.reps, 0), draft.units)]].map(([label, value]) => <View key={label} style={styles.fact}><Text style={styles.label}>{label}</Text><Text numberOfLines={1} style={styles.factValue}>{value}</Text></View>)}</View>
           <Text style={styles.label}>Session type</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={`Session type, ${draft.label || 'No label'}`} disabled={locked} onPress={() => setLabelPicker(true)} style={[styles.input, styles.labelInput]}><Text style={styles.labelValue}>{draft.label || 'No label'}</Text><Icon name="chevron-down" color={colors.textStrong} /></Pressable>
           {draft.exercises.map((ex, index) => { const info = metadata.get(`${ex.exerciseSource}:${ex.exerciseId}`); return <View key={ex.rowId} style={styles.exercise}>

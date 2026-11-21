@@ -31,6 +31,7 @@ import { getTemplate, type WorkoutTemplate } from '../lib/templateService'
 import { getReadiness } from '../lib/readinessService'
 import { computeReadinessScore, todayKey } from '../shared/readiness'
 import { buildProgression, planTarget, sessionHint, type ProgressionSession } from '../shared/progression'
+import { countsTowardVolume } from '../shared/progress'
 import { exercises as exerciseDb } from '../data/exercises'
 import { isActiveSessionStale } from '../lib/sessionDuration'
 import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
@@ -767,7 +768,7 @@ export default function WorkoutPage() {
   const completedSets = active.exercises.reduce((sum, exercise) => (
     sum + exercise.sets.filter((set) => set.done && parseReps(set.reps) > 0).length
   ), 0)
-  const totalVolume = active.exercises.reduce((sum, exercise) => (
+  const totalVolume = active.exercises.reduce((sum, exercise) => !countsTowardVolume(exercise.exerciseId, exercise.exerciseSource) ? sum : (
     sum + exercise.sets.reduce((innerSum, set) => (
       set.done ? innerSum + calcSetVolume(set) : innerSum
     ), 0)

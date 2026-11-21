@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { progressExtras, summarizeAllExercises, type ProgressSessionLite } from '../progress'
+import { formatBestSet, formatCountChange, formatPercentChange, formatSetChange, progressExtras, summarizeAllExercises, type ProgressSessionLite } from '../progress'
 
 const at = (date: string) => new Date(`${date}T18:00:00`).getTime()
 // Wednesday; with 30 days the full weeks are those starting Oct 26, Nov 2 and Nov 9.
@@ -55,6 +55,18 @@ describe('summarizeAllExercises', () => {
 
     const reps = summarizeAllExercises([...sessions, session({ workoutId: 'w5', exerciseId: 'squat', finishedAt: at('2026-10-10'), bestSetWeight: 105, bestSetReps: 1 })], 30, anchor)
     expect(reps.exercises.find(({ key }) => key === 'global:squat')!.change).toEqual({ unit: 'reps', value: 2 })
+
+    const shown = (key: string, units: 'kg' | 'lbs') => {
+      const row = summary.exercises.find((entry) => entry.key === key)!
+      return [formatBestSet(row.best, units), formatSetChange(row.change, units)]
+    }
+    expect(shown('global:squat', 'kg')).toEqual(['105 × 3', '+5 kg'])
+    expect(shown('global:squat', 'lbs')).toEqual(['231.5 × 3', '+11 lbs'])
+    expect(shown('global:pull-up', 'kg')).toEqual(['10 reps', ''])
+    expect(shown('global:assisted-pull-up', 'kg')).toEqual(['25 × 8', '−5 kg'])
+    expect([formatSetChange({ unit: 'reps', value: 2 }, 'kg'), formatSetChange({ unit: 'reps', value: -1 }, 'kg'), formatSetChange({ unit: 'kg', value: 0 }, 'kg')]).toEqual(['+2 reps', '−1 rep', 'same'])
+    expect([formatCountChange(2), formatCountChange(-3), formatCountChange(0)]).toEqual(['+2', '−3', 'same'])
+    expect([formatPercentChange(6.4), formatPercentChange(-12.6), formatPercentChange(-0.3)]).toEqual(['+6%', '−13%', '0%'])
   })
 
   it('has no average or change in the first week and counts this week instead', () => {

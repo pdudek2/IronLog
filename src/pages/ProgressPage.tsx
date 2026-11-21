@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { AlertCircle, ChevronDown } from 'lucide-react'
+import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   CartesianGrid, Cell,
   Area, AreaChart,
-  Bar, BarChart,
+  Bar, BarChart, ReferenceLine,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 
@@ -12,26 +12,26 @@ import { Button } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import { loadProgressData } from '../lib/progressLoadService'
 import {
-  aggregateMuscleBalance,
-  aggregatePeriodComparison,
   aggregateStrengthProgression,
-  aggregateWeeklyVolume,
   defaultStrengthKey,
-  withoutLeadingEmptyWeeks,
+  formatBestSet,
+  formatCountChange,
+  formatPercentChange,
+  formatSetChange,
+  previousPeriodLabel,
   strengthChartScale,
   strengthDeltaLabel,
-  PROGRESS_MUSCLE_COLORS as MUSCLE_COLORS,
+  summarizeAllExercises,
   PROGRESS_MUSCLE_LABELS as MUSCLE_LABELS,
-  type MuscleBalancePoint,
   type ProgressSessionLite,
   type RecordSummary,
   type StrengthPoint,
   type StrengthSeries,
-  type WeeklyPoint,
+  type SummaryWeek,
 } from '../lib/progressService'
 import { pluralize } from '../lib/pluralize'
 import { useProfileStore } from '../store/profileStore'
-import { formatCompactVolume as formatVolume, kgToDisplayWeight } from '../lib/weightUnits'
+import { formatCompactVolume as formatVolume, formatRoundedVolume, formatShortVolume, kgToDisplayWeight } from '../lib/weightUnits'
 import type { Units } from '../lib/userProfile'
 
 const RANGE_OPTIONS = [
@@ -42,29 +42,12 @@ const RANGE_OPTIONS = [
 
 const EMPTY_SESSIONS: ProgressSessionLite[] = []
 const EMPTY_RECORDS: RecordSummary[] = []
-const DEFAULT_VISIBLE_REMAINING_RECORDS = 5
-const RECORDS_PAGE_SIZE = 20
 
-function formatDelta(delta: number): string {
-  return `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}% vs previous`
-}
-
-function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-}
-
-function summarizeWeeklyVolume(data: WeeklyPoint[], units: Units): string {
-  if (data.length === 0) return 'Workout volume: no data in this date range.'
-
-  const first = data[0]
-  if (!first) return 'Workout volume: no data in this date range.'
-
-  const total = data.reduce((sum, point) => sum + point.volume, 0)
-  const peak = data.reduce((top, point) => point.volume > top.volume ? point : top, first)
-  const firstWeek = first.weekLabel
-  const lastWeek = data[data.length - 1]?.weekLabel ?? 'end of range'
-
-  return `Workout volume from ${firstWeek} to ${lastWeek}. Total ${formatVolume(total, units)}. Highest week: ${peak.weekLabel}, ${formatVolume(peak.volume, units)}.`
+function summarizeWeeklyVolume(weeks: SummaryWeek[], average: number | null, units: Units): string {
+  const current = weeks.at(-1)
+  const full = weeks.filter((week) => !week.current)
+  const averageText = average === null ? 'No full week yet.' : `Average ${formatVolume(average, units)} per full week.`
+  return `Weekly volume, ${full.length} full ${pluralize(full.length, 'week', 'weeks')}. ${averageText} This week so far ${formatVolume(current?.volume ?? 0, units)}.`
 }
 
 function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSeries[], units: Units): string {
@@ -86,17 +69,6 @@ function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSer
   return `Weight progression for ${exerciseCount}. ${summaries.join('; ')}.`
 }
 
-function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
-  if (data.length === 0) return 'Muscle group balance: no data.'
-
-  const top = data[0]
-  if (!top) return 'Muscle group balance: no data.'
-  const total = data.reduce((sum, point) => sum + point.count, 0)
-  const muscleName = MUSCLE_LABELS[top.muscle] ?? top.muscle
-
-  return `Muscle group balance. Most trained group: ${muscleName}, ${top.count} ${pluralize(top.count, 'entry', 'entries')}. Total ${total} ${pluralize(total, 'entry', 'entries')} in this view.`
-}
-
 interface DarkTooltipProps {
   active?: boolean
   payload?: Array<{ name?: string; dataKey?: string | number; value?: number | string; color?: string }>
@@ -106,19 +78,12 @@ interface DarkTooltipProps {
 
 export function DarkTooltip({ active, payload, label, units = 'kg' }: DarkTooltipProps) {
   if (!active || !payload?.length) return null
-  const tooltipLabel = typeof label === 'string' ? (MUSCLE_LABELS[label] ?? label) : label
 
   function formatTooltipValue(item: NonNullable<DarkTooltipProps['payload']>[number]) {
     const key = String(item.dataKey ?? item.name ?? '')
     const value = item.value
     if (typeof value !== 'number') return value
 
-    if (key === 'sessions') {
-      return `${value} ${pluralize(value, 'session', 'sessions')}`
-    }
-    if (key === 'count') {
-      return `${value} ${pluralize(value, 'entry', 'entries')}`
-    }
     if (key === 'volume') {
       return formatVolume(value, units)
     }
@@ -136,7 +101,7 @@ export function DarkTooltip({ active, payload, label, units = 'kg' }: DarkToolti
         fontSize: '12px',
       }}
     >
-      <p style={{ color: 'var(--muted)', marginBottom: 4 }}>{tooltipLabel}</p>
+      <p style={{ color: 'var(--muted)', marginBottom: 4 }}>{label}</p>
       {payload.map((p, index) => (
         <p
           key={p.dataKey == null ? `${p.name ?? 'tooltip'}-${index}` : String(p.dataKey)}
@@ -153,8 +118,8 @@ interface ProgressSnapshot {
   rangeDays: number
   sessions: ProgressSessionLite[]
   sessionsTruncated: boolean
+  // Read only to tell an account without workouts from a range without them.
   records: RecordSummary[]
-  recordsTruncated: boolean
   fetchedAt: number
 }
 
@@ -194,11 +159,10 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const [refreshing, setRefreshing] = useState(false)
   const [sessionsError, setSessionsError] = useState(false)
   const [recordsError, setRecordsError] = useState(false)
-  const [recordsLoadedOnce, setRecordsLoadedOnce] = useState(false)
   const [freshnessUncertain, setFreshnessUncertain] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [selectedStrengthKey, setSelectedStrengthKey] = useState<string | null>(null)
-  const [recordsPage, setRecordsPage] = useState<number | null>(null)
+  const strengthPanelRef = useRef<HTMLElement>(null)
 
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
@@ -240,7 +204,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               sessions: result.sessions.value.sessions,
               sessionsTruncated: result.sessions.value.truncated,
               records: next?.records ?? [],
-              recordsTruncated: next?.recordsTruncated ?? false,
               fetchedAt: result.fetchedAt,
             }
           }
@@ -251,7 +214,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               sessions: next?.sessions ?? [],
               sessionsTruncated: next?.sessionsTruncated ?? false,
               records: result.records.value.records,
-              recordsTruncated: result.records.value.truncated,
               fetchedAt: next?.fetchedAt ?? 0,
             }
           }
@@ -260,7 +222,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
         })
         setSessionsError(result.sessions.status === 'error')
         setRecordsError(result.records.status === 'error')
-        if (result.records.status === 'success') setRecordsLoadedOnce(true)
         setFreshnessUncertain(result.freshness === 'uncertain')
       })
       .catch((error) => {
@@ -281,6 +242,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
     }
   }, [userId, requestedRangeDays, loadAttempt])
 
+
   const hasRangeCoverage = (snapshot?.rangeDays ?? 0) >= rangeDays
   const sessions = hasRangeCoverage ? snapshot?.sessions ?? EMPTY_SESSIONS : EMPTY_SESSIONS
   const records = snapshot?.records ?? EMPTY_RECORDS
@@ -291,15 +253,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
     return sessions.filter((s) => s.finishedAt >= cutoff)
   }, [sessions, rangeDays, fetchedAt])
 
-  const weeklyData = useMemo(
-    () => withoutLeadingEmptyWeeks(aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : rangeDays === 90 ? 13 : 53, fetchedAt)),
-    [currentSessions, rangeDays, fetchedAt],
-  )
-
-  const muscleData = useMemo(() => aggregateMuscleBalance(currentSessions), [currentSessions])
-
-  const periodComparison = useMemo(
-    () => aggregatePeriodComparison(sessions, rangeDays, fetchedAt),
+  const summary = useMemo(
+    () => summarizeAllExercises(sessions, rangeDays, fetchedAt),
     [sessions, rangeDays, fetchedAt],
   )
 
@@ -311,7 +266,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   for (const { exerciseName } of strengthData.series) {
     strengthNameCounts.set(exerciseName, (strengthNameCounts.get(exerciseName) ?? 0) + 1)
   }
-  const effectiveStrengthKey = strengthData.series.some(({ key }) => key === selectedStrengthKey)
+  const chartableKeys = new Set(strengthData.series.map(({ key }) => key))
+  const effectiveStrengthKey = chartableKeys.has(selectedStrengthKey ?? '')
     ? selectedStrengthKey
     : defaultStrengthKey(strengthData.series)
   const selectedStrengthSeries = strengthData.series.find(({ key }) => key === effectiveStrengthKey) ?? null
@@ -325,28 +281,20 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const firstStrength = selectedStrengthValues[0] ?? 0
   const latestStrength = selectedStrengthValues.at(-1) ?? 0
   const maxStrength = selectedStrengthValues.length ? Math.max(...selectedStrengthValues) : 0
-  // Stored weights have at most four decimals; rounding the difference drops float noise such as 2.2999999.
   const missingStrengthSessions = Math.max(0, 3 - selectedStrengthPoints.length)
 
-  const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData, units), [weeklyData, units])
   const strengthProgressionLabel = summarizeStrengthProgression(
     selectedStrengthPoints,
     selectedStrengthSeries ? [selectedStrengthSeries] : [],
     units,
   )
-  const muscleBalanceLabel = useMemo(() => summarizeMuscleBalance(muscleData), [muscleData])
-  const totalVolume = useMemo(
-    () => currentSessions.reduce((sum, s) => sum + s.totalVolume, 0),
-    [currentSessions],
-  )
-  const uniqueWorkouts = useMemo(
-    () => new Set(currentSessions.map((s) => s.workoutId)).size,
-    [currentSessions],
-  )
 
-  const uniqueExerciseCount = new Set(
-    currentSessions.map((s) => `${s.exerciseSource}:${s.exerciseId}`),
-  ).size
+  function handleChartExercise(key: string) {
+    setSelectedStrengthKey(key)
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    strengthPanelRef.current?.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' })
+  }
+
   const hasUsableData = snapshot !== null
   const hasSessionSnapshot = hasRangeCoverage && fetchedAt > 0
   const hasStoredData = sessions.length > 0 || records.length > 0
@@ -358,36 +306,19 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const showRangeEmpty = hasSessionSnapshot
     && currentSessions.length === 0
     && !showEmptyState
-  const topMuscle = muscleData[0]
-  const topMuscleName = topMuscle ? (MUSCLE_LABELS[topMuscle.muscle] ?? topMuscle.muscle) : 'None'
-  const topRecord = records[0]
-  const hasPreviousPeriod = periodComparison.previousSessions > 0
-  const recordAccentKeys = Object.keys(MUSCLE_COLORS)
-  const featuredRecords = records.slice(0, 1)
-  const remainingRecords = records.slice(1)
-  const hasHiddenRemainingRecords = remainingRecords.length > DEFAULT_VISIBLE_REMAINING_RECORDS
-  const showAllRecords = recordsPage !== null
-  const recordsPageCount = Math.max(1, Math.ceil(remainingRecords.length / RECORDS_PAGE_SIZE))
-  const currentRecordsPage = Math.min(recordsPage ?? 0, recordsPageCount - 1)
-  const recordsOffset = showAllRecords ? currentRecordsPage * RECORDS_PAGE_SIZE : 0
-  const visibleRemainingRecords = remainingRecords.slice(
-    recordsOffset,
-    recordsOffset + (showAllRecords ? RECORDS_PAGE_SIZE : DEFAULT_VISIBLE_REMAINING_RECORDS),
-  )
   const retryableIssues: string[] = []
   if (freshnessUncertain) {
     retryableIssues.push('Could not confirm data freshness. Recent workouts may not be visible yet.')
   }
-  if (sessionsError) retryableIssues.push('Could not refresh workout data.')
-  if (recordsError) retryableIssues.push('Could not refresh all-time records.')
+  // Records only decide whether an empty range means an empty account.
+  if (sessionsError || (recordsError && sessions.length === 0)) retryableIssues.push('Could not refresh workout data.')
   const limitNotices: string[] = []
   if (hasRangeCoverage && snapshot?.sessionsTruncated) {
     limitNotices.push('Workout analytics include the 5,000 most recent entries.')
   }
-  if (snapshot?.recordsTruncated) {
-    limitNotices.push('The record list is limited to 1,000 entries.')
-  }
   const issues = [...retryableIssues, ...limitNotices]
+  const headlineVolume = summary.averageVolume ?? summary.weeks.at(-1)?.volume ?? 0
+  const topMuscleSets = summary.muscles[0]?.sets || 1
 
   return (
     <div
@@ -452,10 +383,78 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
         )}
 
         {hasSessionSnapshot && currentSessions.length > 0 && (
-          <>
           <div className="progress-analysis-grid">
+            <section className="progress-overview" aria-label="All exercises">
+              <div className="progress-hero">
+                <p className="progress-hero-label">
+                  <b>All exercises</b> · {summary.averageVolume === null ? 'this week so far' : 'average of full weeks'}
+                </p>
+                <p className="progress-hero-value">
+                  {formatRoundedVolume(headlineVolume, units)}
+                  <small>{units}{summary.averageVolume === null ? '' : ' / week'}</small>
+                </p>
+                {summary.averageDelta !== null && (
+                  <p className="progress-hero-delta">
+                    <b>{formatPercentChange(summary.averageDelta)}</b> vs {previousPeriodLabel(rangeDays)}
+                  </p>
+                )}
+                <p className="progress-hero-label progress-hero-end">Workouts</p>
+                <p className="progress-hero-count progress-hero-end">{summary.workouts}</p>
+                {summary.averageDelta !== null && (
+                  <p className="progress-hero-delta progress-hero-end">
+                    <b>{formatCountChange(summary.workouts - summary.previousWorkouts)}</b>
+                  </p>
+                )}
+              </div>
+              <WeeklyVolumeChart weeks={summary.weeks} average={summary.averageVolume} units={units} />
+            </section>
+
+            {summary.muscles.length > 0 && (
+              <section className="progress-muscles">
+                <div className="progress-section-head">
+                  <h2>Sets per muscle group</h2>
+                  <span>{summary.muscleBasis === 'average' ? 'avg / week' : 'this week'}</span>
+                </div>
+                <div className="progress-muscle-list">
+                  {summary.muscles.map(({ muscle, sets }) => (
+                    <div key={muscle} className="progress-muscle-row">
+                      <span>{MUSCLE_LABELS[muscle] ?? muscle}</span>
+                      <i aria-hidden="true"><b style={{ width: `${(sets / topMuscleSets) * 100}%` }} /></i>
+                      <strong className="tabular-nums">{Math.round(sets)}</strong>
+                    </div>
+                  ))}
+                </div>
+                <p className="progress-section-note">Assisting muscles count half.</p>
+              </section>
+            )}
+
+            <section className="progress-exercises">
+              <div className="progress-section-head">
+                <h2>Exercises</h2>
+                <span>best set · vs {previousPeriodLabel(rangeDays)}</span>
+              </div>
+              {summary.exercises.map((row) => {
+                const cells = (
+                  <>
+                    <span className="progress-exercise-name">{row.exerciseName}</span>
+                    <span className="progress-exercise-best tabular-nums">{formatBestSet(row.best, units)}</span>
+                    <span className="progress-exercise-change tabular-nums">{formatSetChange(row.change, units)}</span>
+                  </>
+                )
+                return chartableKeys.has(row.key) ? (
+                  <button key={row.key} type="button" className="progress-exercise-row" onClick={() => handleChartExercise(row.key)}>
+                    {cells}
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <div key={row.key} className="progress-exercise-row">{cells}</div>
+                )
+              })}
+            </section>
+
             <section
-              className={`progress-panel ${!selectedStrengthSeries || selectedStrengthPoints.length < 3 ? 'progress-panel--compact' : 'progress-panel--wide'}`}
+              ref={strengthPanelRef}
+              className="progress-panel progress-strength-panel"
             >
               <div className="progress-panel-head progress-panel-head--strength">
                 <h2 className="progress-visually-hidden">Weight progression</h2>
@@ -555,144 +554,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 </div>
               )}
             </section>
-          <div className="progress-summary-grid" role="group" aria-label={`Summary: ${rangeDays} days`}>
-            <div className="progress-volume-tile" role="group" aria-label="Volume">
-              <span>Volume</span>
-              <strong>{formatVolume(totalVolume, units)}</strong>
-              <p className="progress-visually-hidden">Last {rangeDays} days</p>
-              {hasPreviousPeriod && (
-                <small className="progress-metric-delta" data-trend={periodComparison.volumeDelta >= 0 ? 'up' : 'down'}>
-                  {formatDelta(periodComparison.volumeDelta)}
-                </small>
-              )}
-            </div>
-
-            {(() => {
-              const stats: { label: string; value: string | number; delta?: number; meta?: string }[] = [
-                {
-                  label: 'Sessions',
-                  value: uniqueWorkouts,
-                  delta: hasPreviousPeriod ? periodComparison.sessionsDelta : undefined,
-                },
-                {
-                  label: 'Avg. / session',
-                  value: formatVolume(periodComparison.currentAvgVolume, units),
-                  delta: hasPreviousPeriod ? periodComparison.avgVolumeDelta : undefined,
-                },
-                { label: 'Exercises', value: uniqueExerciseCount },
-                {
-                  label: 'Records',
-                  value: recordsLoadedOnce ? records.length : '—',
-                  meta: recordsLoadedOnce
-                    ? (topRecord ? topRecord.exerciseName : 'no records')
-                    : 'unavailable',
-                },
-                { label: 'Muscle group', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data' },
-              ]
-              const renderStat = (item: (typeof stats)[number]) => (
-                <div key={item.label} className="progress-signal-row" role="group" aria-label={item.label}>
-                  <span>{item.label}</span>
-                  <div>
-                    <strong>{item.value}</strong>
-                    {(item.delta !== undefined || item.meta) && (
-                      <small
-                        className={item.delta === undefined ? undefined : 'progress-metric-delta'}
-                        data-trend={item.delta === undefined ? undefined : item.delta >= 0 ? 'up' : 'down'}
-                      >
-                        {item.delta === undefined ? item.meta : formatDelta(item.delta)}
-                      </small>
-                    )}
-                  </div>
-                </div>
-              )
-              return (
-                <>
-                  {stats.filter((item) => item.label === 'Sessions' || item.label === 'Records').map(renderStat)}
-                  <details className="progress-more-stats">
-                    <summary>More stats<ChevronDown size={14} aria-hidden="true" /></summary>
-                    <div>{stats.filter((item) => item.label !== 'Sessions' && item.label !== 'Records').map(renderStat)}</div>
-                  </details>
-                </>
-              )
-            })()}
           </div>
-            <div className="progress-analysis-side">
-            <motion.section
-              className="progress-panel progress-panel--wide"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.2 }}
-            >
-              <div className="progress-panel-head">
-                <div>
-                  <h2>Weekly volume</h2>
-                </div>
-                <span className="tabular-nums">
-                  {weeklyData.length} {weeklyData.length === 1 ? 'week' : 'weeks'}
-                  {weeklyData.length > 0 && ` · ${formatVolume(weeklyData.at(-1)?.volume ?? 0, units)} this week`}
-                </span>
-              </div>
-              <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
-                <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
-                  {/* Room for "7,500 kg" on one line and for the last week label at the right edge. */}
-                  <BarChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
-                    <CartesianGrid stroke="rgba(244,241,242,0.05)" vertical={false} />
-                    <XAxis
-                      dataKey="weekLabel"
-                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      interval="preserveStartEnd"
-                      minTickGap={24}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => formatVolume(Number(v), units)}
-                      tickCount={3}
-                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={66}
-                    />
-                    <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(244,241,242,0.05)' }} />
-                    {/* Weekly buckets are discrete, so bars rather than a curve between weeks. */}
-                    <Bar dataKey="volume" radius={[4, 4, 0, 0]} maxBarSize={28}>
-                      {weeklyData.map((week, index) => (
-                        <Cell key={week.weekLabel} fill={index === weeklyData.length - 1 ? 'var(--accent)' : 'rgba(239,232,223,0.22)'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </motion.section>
-
-
-            {muscleData.length > 0 && (
-              <motion.section
-                className="progress-panel progress-panel--compact"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.2 }}
-              >
-                <div className="progress-panel-head">
-                  <div>
-                    <h2>Muscle groups</h2>
-                  </div>
-                  <span>entries</span>
-                </div>
-                <div className="progress-muscle-list" role="img" aria-label={muscleBalanceLabel}>
-                  {muscleData.map((entry) => (
-                    <div key={entry.muscle} className="progress-muscle-row">
-                      <span>{MUSCLE_LABELS[entry.muscle] ?? entry.muscle}</span>
-                      <i><b style={{ width: `${(entry.count / (muscleData[0]?.count || 1)) * 100}%` }} /></i>
-                      <strong className="tabular-nums">{entry.count}</strong>
-                    </div>
-                  ))}
-                </div>
-              </motion.section>
-            )}
-            </div>
-          </div>
-          </>
         )}
 
         {showRangeEmpty && (
@@ -700,7 +562,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             <div className="progress-empty-copy">
               <p className="text-base font-semibold text-white">No workouts in this date range</p>
               <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                Earlier sessions and records are still saved.
+                Earlier workouts are still saved.
               </p>
             </div>
             {rangeDays < 365 && (
@@ -711,123 +573,89 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
           </div>
         )}
 
-        {records.length > 0 && (
-          <motion.section
-            className="progress-records"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.2 }}
-          >
-            <div className="progress-records-head">
-              <h2>All-time records</h2>
-            </div>
-
-            <div className="progress-record-showcase" aria-label="Best record">
-              {featuredRecords.map((rec, index) => (
-                <article
-                  key={rec.id}
-                  className="progress-record-feature"
-                  data-rank={index + 1}
-                  style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[index % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
-                >
-                  <div className="progress-record-feature-top">
-                    <span>{formatDate(rec.lastPerformedAt)}</span>
-                  </div>
-
-                  <strong>{rec.exerciseName}</strong>
-
-                  <span className="progress-record-ledger-result">{kgToDisplayWeight(rec.maxWeight, units)} {units} <small>× {rec.maxReps}</small></span>
-
-                  <p>{rec.totalSessions} {pluralize(rec.totalSessions, 'session', 'sessions')}</p>
-                </article>
-              ))}
-            </div>
-
-            {remainingRecords.length > 0 && (
-              <div
-                id="progress-remaining-records"
-                className="progress-record-ledger"
-                aria-label="More records"
-              >
-                <div className="progress-record-ledger-head" aria-hidden="true">
-                  <span>More records</span>
-                  <span>Result</span>
-                </div>
-
-                {visibleRemainingRecords.map((rec, index) => (
-                  <div
-                    key={rec.id}
-                    className="progress-record-ledger-row"
-                    style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[(recordsOffset + index + featuredRecords.length) % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
-                  >
-                    <div className="progress-record-ledger-main">
-                      <strong>{rec.exerciseName}</strong>
-                      <small>
-                        {formatDate(rec.lastPerformedAt)} · {rec.totalSessions}{' '}
-                        {pluralize(rec.totalSessions, 'session', 'sessions')}
-                      </small>
-                    </div>
-                    <span className="progress-record-ledger-result">{kgToDisplayWeight(rec.maxWeight, units)} {units} <small>× {rec.maxReps}</small></span>
-                  </div>
-                ))}
-
-                {showAllRecords && recordsPageCount > 1 && (
-                  <nav aria-label="Record pages" className="flex flex-wrap items-center justify-between gap-2 py-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={currentRecordsPage === 0}
-                      onClick={() => setRecordsPage(currentRecordsPage - 1)}
-                      aria-label="Previous record page"
-                      aria-controls="progress-remaining-records"
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm" style={{ color: 'var(--muted)' }} aria-live="polite" aria-atomic="true">
-                      Page {currentRecordsPage + 1} of {recordsPageCount}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={currentRecordsPage === recordsPageCount - 1}
-                      onClick={() => setRecordsPage(currentRecordsPage + 1)}
-                      aria-label="Next record page"
-                      aria-controls="progress-remaining-records"
-                    >
-                      Next
-                    </Button>
-                  </nav>
-                )}
-
-                {hasHiddenRemainingRecords && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="progress-record-toggle"
-                    onClick={() => setRecordsPage((current) => current === null ? 0 : null)}
-                    aria-expanded={showAllRecords}
-                    aria-controls="progress-remaining-records"
-                  >
-                    {showAllRecords ? 'Show less' : `Show all (${remainingRecords.length})`}
-                  </Button>
-                )}
-              </div>
-            )}
-          </motion.section>
-        )}
-
         {showEmptyState && (
           <div className="progress-panel progress-empty-state">
             <div className="progress-empty-copy">
               <p className="text-lg font-semibold text-white">No data</p>
               <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                Complete a few workouts to see charts and records.
+                Complete a few workouts to see your progress.
               </p>
             </div>
           </div>
         )}
         </>
       )}
+    </div>
+  )
+}
+
+function WeeklyVolumeChart({ weeks, average, units }: { weeks: SummaryWeek[]; average: number | null; units: Units }) {
+  const data = weeks.map((week) => ({ ...week, axisLabel: week.current ? 'so far' : week.weekLabel }))
+  const currentIndex = weeks.findIndex(({ current }) => current)
+  // Axis values next to the average label would collide with it.
+  const tickLabel = (value: number) => value === 0 || (average !== null && Math.abs(value - average) < average * 0.25)
+    ? ''
+    : formatShortVolume(value, units)
+  return (
+    <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={summarizeWeeklyVolume(weeks, average, units)}>
+      <ResponsiveContainer width="100%" aspect={2.6} maxHeight={240} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
+        <BarChart data={data} margin={{ top: 22, right: 0, left: 0, bottom: 0 }} barCategoryGap="30%">
+          <CartesianGrid stroke="rgba(244,238,232,0.1)" vertical={false} />
+          <XAxis
+            dataKey="axisLabel"
+            tick={({ x, y, payload }: { x?: number | string; y?: number | string; payload?: { value?: unknown } }) => (
+              <text
+                x={Number(x)}
+                y={Number(y) + 12}
+                textAnchor={payload?.value === 'so far' ? 'end' : 'middle'}
+                dx={payload?.value === 'so far' ? 8 : 0}
+                className={payload?.value === 'so far' ? 'progress-volume-tick progress-volume-tick--now' : 'progress-volume-tick'}
+              >
+                {String(payload?.value ?? '')}
+              </text>
+            )}
+            axisLine={{ stroke: 'rgba(244,238,232,0.22)' }}
+            tickLine={false}
+            interval="preserveStartEnd"
+            minTickGap={28}
+          />
+          <YAxis
+            tickFormatter={(value) => tickLabel(Number(value))}
+            tickCount={3}
+            tick={{ fill: 'var(--muted-soft)', fontSize: 11.5 }}
+            axisLine={false}
+            tickLine={false}
+            width={44}
+          />
+          <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(244,241,242,0.05)' }} />
+          <Bar
+            dataKey="volume"
+            radius={2}
+            maxBarSize={24}
+            isAnimationActive={false}
+            label={({ x, y, width, index }: { x?: number | string; y?: number | string; width?: number | string; index?: number }) => index === currentIndex
+              ? <text x={Number(x) + Number(width)} y={Number(y) - 6} textAnchor="end" className="progress-volume-tick progress-volume-tick--now">{formatShortVolume(weeks[currentIndex]?.volume ?? 0, units)}</text>
+              : null}
+          >
+            {data.map((week) => (
+              <Cell
+                key={week.weekStart}
+                fill={week.current ? 'none' : 'var(--accent)'}
+                stroke={week.current ? 'var(--accent)' : 'none'}
+                strokeWidth={week.current ? 1.5 : 0}
+              />
+            ))}
+          </Bar>
+          {average !== null && (
+            <ReferenceLine
+              y={average}
+              stroke="var(--muted)"
+              strokeDasharray="2 4"
+              label={{ value: formatShortVolume(average, units), position: 'left', className: 'progress-volume-tick progress-volume-tick--now' }}
+            />
+          )}
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   )
 }

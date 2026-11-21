@@ -334,24 +334,23 @@ export function summarizeAllExercises(sessions: ProgressSessionLite[], rangeDays
   const divisor = Math.max(full.length, 1)
   const muscles = [...muscleSets].map(([muscle, sets]) => ({ muscle, sets: sets / divisor })).sort((a, b) => b.sets - a.sets || a.muscle.localeCompare(b.muscle))
 
-  const rows = new Map<string, ExerciseSummaryRow & { latest: number; previous: BestSet | null; workouts: Set<string> }>()
+  const rows = new Map<string, ExerciseSummaryRow & { previous: BestSet | null; workouts: Set<string> }>()
   for (const session of [...sessions].sort((a, b) => a.finishedAt - b.finishedAt)) {
     if (session.finishedAt < previousStart) continue
     const key = `${session.exerciseSource}:${session.exerciseId}`
     const assisted = isAssistedExercise(session.exerciseId, session.exerciseSource)
     const set = bestOf(session, assisted)
-    const row = rows.get(key) ?? { key, exerciseId: session.exerciseId, exerciseSource: session.exerciseSource, exerciseName: session.exerciseName, sessions: 0, best: { weight: 0, reps: 0 }, assisted, change: null, latest: 0, previous: null, workouts: new Set<string>() }
+    const row = rows.get(key) ?? { key, exerciseId: session.exerciseId, exerciseSource: session.exerciseSource, exerciseName: session.exerciseName, sessions: 0, best: { weight: 0, reps: 0 }, assisted, change: null, previous: null, workouts: new Set<string>() }
     if (session.finishedAt < rangeStart) {
       if (!row.previous || better(set, row.previous, assisted)) row.previous = set
     } else {
       if (!row.workouts.size || better(set, row.best, assisted)) row.best = set
       row.workouts.add(session.workoutId)
       row.exerciseName = session.exerciseName
-      row.latest = session.finishedAt
     }
     rows.set(key, row)
   }
-  const exercisesInRange = [...rows.values()].filter(({ workouts }) => workouts.size > 0).map(({ latest: _latest, previous, workouts, ...row }) => ({
+  const exercisesInRange = [...rows.values()].filter(({ workouts }) => workouts.size > 0).map(({ previous, workouts, ...row }) => ({
     ...row,
     sessions: workouts.size,
     change: !previous ? null : row.best.weight !== previous.weight
@@ -389,6 +388,33 @@ export function strengthDeltaLabel(firstKg: number, latestKg: number, firstDate:
   if (!delta) return `No change since ${firstDate}`
   return `${delta > 0 ? '+' : '−'}${kgToDisplayWeight(Math.abs(delta), units)} ${units} since ${firstDate}`
 }
+
+export function formatBestSet(best: BestSet, units: WeightUnits): string {
+  return best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} × ${best.reps}` : `${best.reps} ${best.reps === 1 ? 'rep' : 'reps'}`
+}
+
+const signed = (value: number, text: string) => `${value > 0 ? '+' : '−'}${text}`
+
+// Null shows nothing; for assisted rows a minus means less help, so the sign is never coloured.
+export function formatSetChange(change: ExerciseSummaryRow['change'], units: WeightUnits): string {
+  if (!change) return ''
+  if (!change.value) return 'same'
+  const size = Math.abs(change.value)
+  return change.unit === 'kg'
+    ? signed(change.value, `${kgToDisplayWeight(size, units)} ${units}`)
+    : signed(change.value, `${size} ${size === 1 ? 'rep' : 'reps'}`)
+}
+
+export function formatCountChange(value: number): string {
+  return value ? signed(value, String(Math.abs(value))) : 'same'
+}
+
+export function formatPercentChange(percent: number): string {
+  const rounded = Math.round(percent)
+  return rounded ? signed(rounded, `${Math.abs(rounded)}%`) : '0%'
+}
+
+export const previousPeriodLabel = (rangeDays: number) => rangeDays === 365 ? 'previous year' : `previous ${rangeDays} days`
 
 export interface StrengthPoint {
   date: string

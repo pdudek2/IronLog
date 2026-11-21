@@ -45,3 +45,16 @@ export function formatCompactVolume(volumeKg: number, units: WeightUnits): strin
   if (volume >= 10_000) return `${Math.round(volume / 1_000).toLocaleString('en-US')}k ${units}`
   return `${volume.toLocaleString('en-US')} ${units}`
 }
+
+// Chart labels such as "9.5k" or "30k"; the unit is in the heading.
+export function formatShortVolume(volumeKg: number, units: WeightUnits): string {
+  const volume = Math.round(kgToDisplayWeight(volumeKg, units))
+  return volume >= 1_000 ? `${Math.round(volume / 100) / 10}k` : String(volume)
+}
+
+// A weekly average such as "19,200": exact to 100 from 10,000 and to 10 below.
+export function formatRoundedVolume(volumeKg: number, units: WeightUnits): string {
+  const volume = kgToDisplayWeight(volumeKg, units)
+  const step = volume >= 10_000 ? 100 : 10
+  return (Math.round(volume / step) * step).toLocaleString('en-US')
+}

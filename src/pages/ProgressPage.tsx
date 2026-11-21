@@ -509,7 +509,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 </>
               ) : (
                 <div className="progress-chart-frame progress-chart-frame--strength" role="img" aria-label={strengthProgressionLabel}>
-                  <ResponsiveContainer width="100%" aspect={1.75} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
+                  <ResponsiveContainer width="100%" aspect={1.75} maxHeight={320} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
                     <AreaChart data={selectedStrengthPoints} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
                       <defs>
                         <linearGradient id="strength-fade" x1="0" y1="0" x2="0" y2="1">

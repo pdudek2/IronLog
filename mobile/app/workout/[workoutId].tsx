@@ -9,6 +9,7 @@ import Svg, { Path } from 'react-native-svg'
 import { exercises as exerciseCatalog } from '../../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../../../src/lib/exerciseLabels'
 import { exerciseSummaryLabel } from '../../../src/shared/workoutDisplay'
+import { countsTowardVolume } from '../../../src/shared/progress'
 import { formatCompactVolume, kgToDisplayWeight } from '../../../src/shared/weightUnits'
 import { readExerciseMetadata, readSavedWorkout } from '../../src/firebase'
 import { useSessionRead } from '../../src/useSessionRead'
@@ -69,7 +70,7 @@ export default function SavedWorkoutScreen() {
     ? exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)?.category : undefined) ?? [])
   const totalSets = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0) ?? 0
   const totalReps = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.reduce((inner, set) => inner + set.reps, 0), 0) ?? 0
-  const volume = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.reduce((inner, set) => inner + set.weight * set.reps, 0), 0) ?? 0
+  const volume = workout?.exercises.reduce((sum, exercise) => countsTowardVolume(exercise.exerciseId, exercise.exerciseSource) ? sum + exercise.sets.reduce((inner, set) => inner + set.weight * set.reps, 0) : sum, 0) ?? 0
 
   if (!user) return (
     <SafeAreaView edges={['top']} style={styles.screen}>

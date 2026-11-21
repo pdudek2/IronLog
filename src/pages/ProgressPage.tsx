@@ -393,14 +393,14 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                   {formatRoundedVolume(headlineVolume, units)}
                   <small>{units}{summary.averageVolume === null ? '' : ' / week'}</small>
                 </p>
-                {summary.averageDelta !== null && (
+                {summary.comparable && (
                   <p className="progress-hero-delta">
-                    <b>{formatPercentChange(summary.averageDelta)}</b> vs {previousPeriodLabel(rangeDays)}
+                    {summary.averageDelta !== null && <><b>{formatPercentChange(summary.averageDelta)}</b> vs {previousPeriodLabel(rangeDays)}</>}
                   </p>
                 )}
                 <p className="progress-hero-label progress-hero-end">Workouts</p>
                 <p className="progress-hero-count progress-hero-end">{summary.workouts}</p>
-                {summary.averageDelta !== null && (
+                {summary.comparable && (
                   <p className="progress-hero-delta progress-hero-end">
                     <b>{formatCountChange(summary.workouts - summary.previousWorkouts)}</b>
                   </p>

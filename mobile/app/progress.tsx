@@ -118,8 +118,8 @@ function ProgressContent({ uid }: { uid: string }) {
             <Text numberOfLines={1} style={styles.heroValue}>{formatRoundedVolume(headlineVolume, units)}<Text style={styles.heroUnit}> {units}{summary.averageVolume === null ? '' : ' / week'}</Text></Text>
             <Text style={styles.heroCount}>{summary.workouts}</Text>
           </View>
-          {summary.averageDelta !== null && <View style={[styles.heroRow, styles.heroDeltaRow]}>
-            <Text style={styles.heroLabel}><Text style={styles.heroStrong}>{formatPercentChange(summary.averageDelta)}</Text> vs {previousPeriodLabel(rangeDays)}</Text>
+          {summary.comparable && <View style={[styles.heroRow, styles.heroDeltaRow]}>
+            <Text style={styles.heroLabel}>{summary.averageDelta !== null && <><Text style={styles.heroStrong}>{formatPercentChange(summary.averageDelta)}</Text> vs {previousPeriodLabel(rangeDays)}</>}</Text>
             <Text style={[styles.heroLabel, styles.heroStrong]}>{formatCountChange(summary.workouts - summary.previousWorkouts)}</Text>
           </View>}
           <View style={styles.weekly}><WeeklyVolumeChart weeks={summary.weeks} average={summary.averageVolume} units={units} width={chartWidth} /></View>

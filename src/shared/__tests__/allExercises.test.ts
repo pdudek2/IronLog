@@ -32,9 +32,25 @@ describe('summarizeAllExercises', () => {
     expect(summary.weeks.map(({ volume, current }) => [volume, current])).toEqual([[600, false], [2000, false], [2400, false], [1500, true]])
     expect(summary.fullWeeks).toBe(3)
     expect(summary.averageVolume).toBeCloseTo(5000 / 3)
-    // Previous three weeks: Oct 19 (0), Oct 12 (2000), Oct 5 (assisted only, 0).
-    expect(summary.averageDelta).toBeCloseTo(150)
-    expect([summary.workouts, summary.previousWorkouts]).toEqual([4, 2])
+    // The full weeks before the range since the first workout: Oct 5 (assisted only, 0) and Oct 12 (2000).
+    // Oct 19 straddles the range start, so it belongs to neither period.
+    expect(summary.averageDelta).toBeCloseTo(200 / 3)
+    expect([summary.comparable, summary.workouts, summary.previousWorkouts]).toEqual([true, 4, 2])
+  })
+
+  it('compares the same steady weeks as no change, whatever happens in the week across the range start', () => {
+    const steady = ['2026-09-22', '2026-09-29', '2026-10-06', '2026-10-13', '2026-10-27', '2026-11-03', '2026-11-10']
+      .map((date, index) => session({ workoutId: `s${index}`, exerciseId: 'squat', finishedAt: at(date), totalVolume: 1000 }))
+    expect(summarizeAllExercises(steady, 30, anchor).averageDelta).toBe(0)
+    const spike = session({ workoutId: 'spike', exerciseId: 'squat', finishedAt: at('2026-10-20'), totalVolume: 10_000 })
+    expect(summarizeAllExercises([...steady, spike], 30, anchor).averageDelta).toBe(0)
+  })
+
+  it('still compares workouts when there is no volume to compare', () => {
+    const bodyweight = ['2026-09-22', '2026-09-29', '2026-10-06', '2026-10-13', '2026-10-27', '2026-11-03']
+      .map((date, index) => session({ workoutId: `b${index}`, exerciseId: 'pull-up', finishedAt: at(date), bestSetReps: 8 }))
+    const summary = summarizeAllExercises(bodyweight, 30, anchor)
+    expect([summary.comparable, summary.averageDelta, summary.workouts, summary.previousWorkouts]).toEqual([true, null, 2, 4])
   })
 
   it('counts sets per muscle per full week, the first muscle whole and the others half, without cardio', () => {
@@ -69,6 +85,13 @@ describe('summarizeAllExercises', () => {
     expect([formatPercentChange(6.4), formatPercentChange(-12.6), formatPercentChange(-0.3)]).toEqual(['+6%', '−13%', '0%'])
   })
 
+  it('does not invent reps for old documents without them', () => {
+    const old = session({ workoutId: 'old', exerciseId: 'squat', finishedAt: at('2026-10-10'), bestSetWeight: 105, bestSetReps: undefined })
+    const withOld = summarizeAllExercises([...sessions, old], 30, anchor)
+    expect(withOld.exercises.find(({ key }) => key === 'global:squat')!.change).toBeNull()
+    expect(formatBestSet({ weight: 100, reps: null }, 'kg')).toBe('100 kg')
+  })
+
   it('has no average or change in the first week and counts this week instead', () => {
     const first = summarizeAllExercises([session({ workoutId: 'n1', exerciseId: 'squat', finishedAt: at('2026-11-17'), bestSetWeight: 60, bestSetReps: 5, totalVolume: 900, totalSets: 2 })], 90, anchor)
     expect(first.weeks).toEqual([expect.objectContaining({ volume: 900, current: true })])
@@ -84,7 +107,8 @@ describe('summarizeAllExercises', () => {
 
 describe('progressExtras', () => {
   it('falls back on old documents and finds the set with the least assistance', () => {
-    expect(progressExtras({}, 'squat', 'global')).toEqual({ bestSetReps: 0, category: null })
+    expect(progressExtras({}, 'squat', 'global')).toEqual({ category: null })
+    expect(progressExtras({ bestSetWeight: 100, sets: [{ weight: 90, reps: 10 }, { weight: 100, reps: 6 }, { weight: 100, reps: 8 }] }, 'squat', 'global')).toEqual({ bestSetReps: 8, category: null })
     expect(progressExtras({ bestSetReps: 6, category: 'legs', sets: [{ weight: 10, reps: 5 }] }, 'squat', 'global')).toEqual({ bestSetReps: 6, category: 'legs' })
     const sets = [{ weight: 40, reps: 8 }, { weight: 25, reps: 6 }, { weight: 25, reps: 7 }, { weight: 20, reps: 0 }, { weight: 'x', reps: 9 }]
     expect(progressExtras({ sets }, 'assisted-pull-up', 'global').leastAssisted).toEqual({ weight: 25, reps: 7 })

@@ -79,7 +79,7 @@ export function countsTowardVolume(exerciseId: string | undefined, exerciseSourc
 // Reads the optional fields of an `exerciseSessions` document; old or odd values fall back instead of failing the load.
 export function progressExtras(data: Record<string, unknown>, exerciseId: string, exerciseSource: 'global' | 'user'): Pick<ProgressSessionLite, 'bestSetReps' | 'category' | 'leastAssisted'> {
   const finite = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
-  let leastAssisted: BestSet | undefined
+  let leastAssisted: { weight: number; reps: number } | undefined
   if (isAssistedExercise(exerciseId, exerciseSource) && Array.isArray(data.sets)) {
     for (const raw of data.sets as unknown[]) {
       const set = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
@@ -89,8 +89,18 @@ export function progressExtras(data: Record<string, unknown>, exerciseId: string
       if (!leastAssisted || better({ weight, reps }, leastAssisted, true)) leastAssisted = { weight, reps }
     }
   }
+  // Documents written before `bestSetReps` existed: take the reps of the heaviest stored set, or leave them unknown.
+  let bestSetReps = finite(data.bestSetReps)
+  if (bestSetReps === null && Array.isArray(data.sets)) {
+    const heaviest = finite(data.bestSetWeight)
+    for (const raw of data.sets as unknown[]) {
+      const set = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+      const reps = finite(set.reps)
+      if (reps !== null && finite(set.weight) === heaviest && reps > (bestSetReps ?? -1)) bestSetReps = reps
+    }
+  }
   return {
-    bestSetReps: finite(data.bestSetReps) ?? 0,
+    ...(bestSetReps !== null ? { bestSetReps } : {}),
     category: typeof data.category === 'string' ? data.category : null,
     ...(leastAssisted ? { leastAssisted } : {}),
   }
@@ -105,7 +115,8 @@ export interface SummaryWeek {
 
 export interface BestSet {
   weight: number
-  reps: number
+  // Null when an old document did not record it.
+  reps: number | null
 }
 
 export interface ExerciseSummaryRow {
@@ -116,7 +127,7 @@ export interface ExerciseSummaryRow {
   sessions: number
   best: BestSet
   assisted: boolean
-  // kg when the best weight moved, otherwise reps; null without sessions in the previous period.
+  // kg when the best weight moved, otherwise reps; null without sessions in the previous period or with unknown reps.
   change: { unit: 'kg' | 'reps'; value: number } | null
 }
 
@@ -125,7 +136,9 @@ export interface AllExercisesSummary {
   fullWeeks: number
   // Mean volume of the full weeks in the range; null before the first full week.
   averageVolume: number | null
-  // Percent against the same mean in the period before; null with fewer than 2 full weeks on either side.
+  // At least 2 full weeks in the range and in the period before it.
+  comparable: boolean
+  // Percent against the same mean in the period before; null when not comparable or the earlier mean is 0.
   averageDelta: number | null
   workouts: number
   previousWorkouts: number
@@ -137,13 +150,13 @@ export interface AllExercisesSummary {
 
 function bestOf(session: ProgressSessionLite, assisted: boolean): BestSet {
   if (assisted && session.leastAssisted) return session.leastAssisted
-  return { weight: session.bestSetWeight, reps: session.bestSetReps ?? 0 }
+  return { weight: session.bestSetWeight, reps: session.bestSetReps ?? null }
 }
 
 // Server rule: heavier wins, then more reps. With assistance, less help wins.
 function better(a: BestSet, b: BestSet, assisted: boolean): boolean {
   if (a.weight !== b.weight) return assisted ? a.weight < b.weight : a.weight > b.weight
-  return a.reps > b.reps
+  return (a.reps ?? -1) > (b.reps ?? -1)
 }
 
 function mondayOf(ms: number): number {
@@ -174,12 +187,15 @@ export function summarizeAllExercises(sessions: ProgressSessionLite[], rangeDays
     current: monday === currentMonday,
   }))
   const full = weeks.filter(({ current }) => !current)
+  // The period before has its own full weeks: they start inside it and end by the range start.
+  const previousMonday = mondayOf(previousStart)
   const previousMondays: number[] = []
-  for (let monday = addLocalDays(new Date(firstFullWeek), -7).getTime(); previousMondays.length < full.length && monday >= firstMonday; monday = addLocalDays(new Date(monday), -7).getTime()) previousMondays.push(monday)
+  for (let monday = Math.max(firstMonday, previousMonday >= previousStart ? previousMonday : addLocalDays(new Date(previousMonday), 7).getTime()); addLocalDays(new Date(monday), 7).getTime() <= rangeStart; monday = addLocalDays(new Date(monday), 7).getTime()) previousMondays.push(monday)
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length
   const averageVolume = full.length ? mean(full.map(({ volume }) => volume)) : null
-  const previousAverage = previousMondays.length >= 2 ? mean(previousMondays.map((monday) => weekVolume.get(monday) ?? 0)) : null
-  const averageDelta = averageVolume !== null && full.length >= 2 && previousAverage ? calcDelta(averageVolume, previousAverage) : null
+  const comparable = full.length >= 2 && previousMondays.length >= 2
+  const previousAverage = comparable ? mean(previousMondays.map((monday) => weekVolume.get(monday) ?? 0)) : 0
+  const averageDelta = comparable && averageVolume !== null && previousAverage > 0 ? calcDelta(averageVolume, previousAverage) : null
 
   const workoutsIn = (from: number, to: number) => new Set(sessions.filter(({ finishedAt }) => finishedAt >= from && finishedAt < to).map(({ workoutId }) => workoutId)).size
 
@@ -216,12 +232,13 @@ export function summarizeAllExercises(sessions: ProgressSessionLite[], rangeDays
     sessions: workouts.size,
     change: !previous ? null : row.best.weight !== previous.weight
       ? { unit: 'kg' as const, value: Math.round((row.best.weight - previous.weight) * 1000) / 1000 }
-      : { unit: 'reps' as const, value: row.best.reps - previous.reps },
+      : row.best.reps === null || previous.reps === null ? null
+        : { unit: 'reps' as const, value: row.best.reps - previous.reps },
   }))
   exercisesInRange.sort((a, b) => b.sessions - a.sessions || a.exerciseName.localeCompare(b.exerciseName, 'en-US') || a.key.localeCompare(b.key))
 
   return {
-    weeks, fullWeeks: full.length, averageVolume, averageDelta,
+    weeks, fullWeeks: full.length, averageVolume, comparable, averageDelta,
     workouts: workoutsIn(rangeStart, Infinity), previousWorkouts: workoutsIn(previousStart, rangeStart),
     muscles, muscleBasis, exercises: exercisesInRange,
   }
@@ -251,6 +268,7 @@ export function strengthDeltaLabel(firstKg: number, latestKg: number, firstDate:
 }
 
 export function formatBestSet(best: BestSet, units: WeightUnits): string {
+  if (best.reps === null) return best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} ${units}` : '—'
   return best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} × ${best.reps}` : `${best.reps} ${best.reps === 1 ? 'rep' : 'reps'}`
 }
 
